@@ -1,0 +1,15 @@
+{
+  "name": "cherry-djinn",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Cherry Djinn — a slot-machine roguelike",
+  "scripts": {
+    "dev": "node tools/serve.mjs",
+    "build": "node tools/build.mjs",
+    "sim": "node tools/sim.mjs"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.2"
+  }
+}
