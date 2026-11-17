@@ -450,7 +450,7 @@ const PAGES = [
   ['THE DEAL', 'A djinn has bound you to its slot machine. Pay each [g]tribute[] before your Spins run out, or be pulled into the lamp. Nine tributes win your freedom.'],
   ['SCORING', 'Every symbol on the board pays [c]coins[]. Lines and charms add [m]Mult[]. A spin scores [c]coins[] x [m]Mult[]. Symbols [k]touch[] the 8 cells around them.'],
   ['LINES', '3 or more of the same [k]family[] side by side in a row: [m]+1, +2 or +4 Mult[]. 3 or more [k]identical[] symbols: [m]x2, x3 or x5 Mult[]. Tap any symbol to read it.'],
-  ['WISHES', 'After the reels land you may spend a Wish: [k]HOLD[] the reels you like and [k]RESPIN[] the rest, or [k]NUDGE[] one reel a single step with the arrows. Then [k]CASH IN[].'],
+  ['WISHES', 'After the reels land you may spend a Wish: [k]HOLD[] the reels you like and [k]RESPIN[] the rest, or [k]NUDGE[]: tap the symbol waiting just above or below a reel to pull it onto the board. Then [k]CASH IN[].'],
   ['RIG THE MACHINE', 'At the Bazaar, buy symbols and choose the reel and the exact spot. Each reel is a loop showing 3 in a row, so neighbours you stack will land together. [k]Banish[] symbols to make reels short and reliable.'],
   ['PICK A BUILD', 'The starting reels will not carry you past Act 1. Most [m]Mult[] only switches on when you commit: enough of one family on the board, long lines, short reels. Read the charms and build toward one.'],
   ['CURSED RELICS', 'Now and then the Bazaar sells a [x]cursed relic[] cheaply: very strong, with a catch, and it can never be sold. They need no charm slot.'],

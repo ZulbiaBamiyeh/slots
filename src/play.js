@@ -36,7 +36,7 @@ function layout() {
   const o = {};
   if (V.portrait) {
     const cell = clamp(Math.floor((W - 24) / 5), 30, 46);
-    const mw = cell * 5 + 20, mh = cell * 3 + 59;
+    const mw = cell * 5 + 20, mh = cell * 3 + 71;
     const fixed = 48 + 38 + mh + 40 + 22 + 36;
     const free = Math.max(0, bot - top - fixed);
     const gap = Math.min(12, free / 5);
@@ -49,8 +49,8 @@ function layout() {
     o.status = { x, y, w, h: 22 }; y += 22 + gap;
     o.btn = { x, y, w, h: 36 };
   } else {
-    const cell = clamp(Math.min(Math.floor((W - 228) / 5), Math.floor((bot - top - 106) / 3)), 28, 56);
-    const mw = cell * 5 + 20, mh = cell * 3 + 59;
+    const cell = clamp(Math.min(Math.floor((W - 228) / 5), Math.floor((bot - top - 118) / 3)), 28, 56);
+    const mw = cell * 5 + 20, mh = cell * 3 + 71;
     const mx = (W - mw) / 2, my = top + (bot - top - (mh + 42)) / 2;
     o.mach = { x: mx, y: my, w: mw, h: mh, cell };
     o.btn = { x: mx, y: my + mh + 6, w: mw, h: 36 };
@@ -64,7 +64,7 @@ function layout() {
   }
   for (const k in o) for (const f of ['x', 'y', 'w', 'h']) o[k][f] = Math.round(o[k][f]);
   const m = o.mach;
-  m.rx = m.x + 6; m.ry = m.y + 6 + 13; m.pitch = m.cell + 2; m.rh = m.cell * 3 + 4;
+  m.rx = m.x + 6; m.ry = m.y + 6 + 19; m.pitch = m.cell + 2; m.rh = m.cell * 3 + 4;
   m.ss = pxScale(m.cell * 0.8 / 16);
   return o;
 }
@@ -159,7 +159,7 @@ function landed() {
   for (const l of P.res.lines) for (let c = l.c0; c < l.c0 + l.len; c++) P.cell[c * 3 + l.row].sc.kick(l.kind === 'pure' ? 4 : 2);
   if (P.res.lines.some((l) => l.kind === 'pure')) { sfx.line(4); djinnMood('shock', 1); }
   else if (P.res.lines.length) sfx.line(2);
-  if (S.meta.tut) P.hint = run.wishesLeft > 0 ? 'HOLD + RESPIN or NUDGE cost a Wish. Then CASH IN.' : 'CASH IN to score.';
+  if (S.meta.tut) P.hint = run.wishesLeft > 0 ? 'Tap a symbol waiting above or below a reel to NUDGE it in, or HOLD + RESPIN. Each costs a Wish.' : 'CASH IN to score.';
 }
 
 async function doSpin() {
@@ -517,20 +517,26 @@ function drawMachine(m, on) {
     }
     // nudge + hold controls
     const chained = !G.canHold(run, c);
-    for (const dir of [1, -1]) {
-      const by = dir > 0 ? m.ry - 13 : m.ry + m.rh + 3, bh = 10;
+    // nudge controls double as a peek at the symbol waiting just off the board
+    for (const isTop of [true, false]) {
+      const by = isTop ? m.ry - 19 : m.ry + m.rh + 3, bh = 16, dir = isTop ? -1 : 1;
       const act = canWish && !chained;
-      const hov = act && I.mouse && over(x, by - 1, m.cell, bh + 3);
-      rrect(x + 3, by, m.cell - 6, bh, '#0B0920', 1);
-      rrect(x + 4, by + 1, m.cell - 8, bh - 2, act ? (hov ? '#B98CFF' : '#8A4FD8') : '#3A2A5E', 1);
+      const hov = act && I.mouse && over(x, by - 1, m.cell, bh + 2);
+      rrect(x + 1, by, m.cell - 2, bh, '#0B0920', 1);
+      rrect(x + 2, by + 1, m.cell - 4, bh - 2, act ? (hov ? '#B98CFF' : '#8A4FD8') : '#3A2A5E', 1);
+      const ax = x + m.cell - 8, ay = by + bh / 2;
+      if (!P.spinning[c] && run.phase !== 'paid') {
+        const next = reel[mod(run.offsets[c] + (isTop ? -1 : 3), len)];
+        rrect(x + 4, by + 2, 14, bh - 4, act ? '#FFF4E0' : '#8E88C0', 1);
+        spr(next.id, x + 11, by + bh / 2, pxScale(0.75), 0, act ? 1 : 0.6);
+      }
       g.fillStyle = act ? '#FFF4E0' : '#6A5A90';
-      const mx = x + m.cell / 2, my = by + bh / 2;
       g.beginPath();
-      if (dir > 0) { g.moveTo(mx - 4, my + 2.5); g.lineTo(mx + 4, my + 2.5); g.lineTo(mx, my - 2.5); } else { g.moveTo(mx - 4, my - 2.5); g.lineTo(mx + 4, my - 2.5); g.lineTo(mx, my + 2.5); }
+      if (isTop) { g.moveTo(ax - 4, ay - 2.5); g.lineTo(ax + 4, ay - 2.5); g.lineTo(ax, ay + 2.5); } else { g.moveTo(ax - 4, ay + 2.5); g.lineTo(ax + 4, ay + 2.5); g.lineTo(ax, ay - 2.5); }
       g.fill();
-      if (on && landedNow && tapped(x, by - 3, m.cell, bh + 5)) { chained ? (sfx.error(), toast('The Chains bind this reel.', '#FF7A8A')) : doNudge(c, dir); }
+      if (on && landedNow && tapped(x, by - 2, m.cell, bh + 3)) { chained ? (sfx.error(), toast('The Chains bind this reel.', '#FF7A8A')) : doNudge(c, dir); }
     }
-    const hy = m.ry + m.rh + 16;
+    const hy = m.ry + m.rh + 22;
     const lit = run.held[c];
     if (button('hold' + c, x, hy, m.cell, 16, chained ? 'LOCK' : lit ? 'HELD' : 'HOLD', { col: lit ? '#F2A93B' : '#3A5FE0', disabled: !landedNow || chained, enabled: on, quiet: true })) {
       G.toggleHold(run, c); sfx.hold(run.held[c]); save();
