@@ -30,8 +30,9 @@ Plays a few hundred runs with a bot and prints how far it gets, for tuning tribu
 - **Reels, not a bag.** Each reel is a looping strip showing 3 symbols. Symbols you buy go on the reel and spot you choose, so vertical neighbours are engineered and horizontal ones are luck.
 - **Score = coins x Mult.** Every symbol pays coins and may affect the 8 cells it touches. 3+ of one family in a row adds Mult; 3+ identical multiplies it.
 - **4 spins, 3 wishes per tribute.** A wish holds reels and respins the rest, or nudges one reel a step.
-- **9 tributes in 3 acts.** Every third has a Decree. After each Decree the djinn offers a free cursed relic.
-- **Bazaar** between rounds: symbols, charms (max 5), banish, move, reroll.
+- **9 tributes in 3 acts.** Every third has a Decree. The starting reels clear Act 1; after that you need a build.
+- **Builds.** Most Mult is conditional: enough of one family on the board (fruit, creatures, treasure, garden, magic), long lines, eaters and crackers, short reels, banishing, curses.
+- **Bazaar** between rounds: symbols, charms (max 5), banish, move, reroll, and sometimes a cheap cursed relic with a catch.
 - **Meta:** four lamps (starting reel sets) and Wrath levels unlock as you play. Runs save automatically.
 
 ## Code map

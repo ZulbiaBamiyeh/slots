@@ -154,6 +154,8 @@ async function animateSpin(cols) {
 function landed() {
   const run = S.run;
   P.res = G.evaluate(run);
+  // show what will not score before the player commits
+  for (const x of P.res.cells) P.cell[x.i].dead = x.dead ? 1 : 0;
   for (const l of P.res.lines) for (let c = l.c0; c < l.c0 + l.len; c++) P.cell[c * 3 + l.row].sc.kick(l.kind === 'pure' ? 4 : 2);
   if (P.res.lines.some((l) => l.kind === 'pure')) { sfx.line(4); djinnMood('shock', 1); }
   else if (P.res.lines.length) sfx.line(2);
@@ -212,7 +214,7 @@ async function doCash() {
   save();
   await playScore(res, before);
   P.bOver = null; T.speed = 1; P.fast = false;
-  for (const n of res.notes) if (n.t === 'shatter') { toast('The Sand Timer shatters! 3 curses added.', '#FF7A8A'); sfx.curse(); shake(5); }
+  for (const n of res.notes) if (n.t === 'shatter') { toast('The Ruin Timer shatters! 3 curses added.', '#FF7A8A'); sfx.curse(); shake(5); }
   if (res.outcome === 'paid') return finishRound();
   if (res.outcome === 'over') return gameOver();
   const target = G.tributeFor(run);
@@ -509,9 +511,9 @@ function drawMachine(m, on) {
     g.restore();
     if (run.held[c]) { rrect(x + 2, m.ry + m.rh - 11, m.cell - 4, 10, '#3A5FE0', 1); text(g, 'HELD', x + m.cell / 2, m.ry + m.rh - 10, { align: 'c' }); }
     // evil eye glare marker
-    if (run.glare >= 0 && Math.floor(run.glare / 3) === c && run.phase === 'landed' && !P.spinning[c]) {
-      const [gx, gy] = cellXY(run.glare);
-      spr('evileye', gx + m.cell * 0.28, gy - m.cell * 0.28, pxScale(m.ss * 0.5), 0, 0.9);
+    if (run.glare === c && run.phase === 'landed' && !P.spinning[c]) {
+      g.fillStyle = 'rgba(58,40,120,0.28)'; g.fillRect(x, m.ry, m.cell, m.rh);
+      spr('evileye', x + m.cell / 2, m.ry + 5 + Math.sin(V.t * 3) * 1, pxScale(m.ss * 0.5), 0, 0.95);
     }
     // nudge + hold controls
     const chained = !G.canHold(run, c);
@@ -670,7 +672,7 @@ function drawPayout(on) {
     rect(x + 8, y + h - 31, w - 16, 1, '#4A4290');
     if (button('payc', x + 8, y + h - 26, w - 16, 22, `COLLECT ${sum} GOLD`, { col: '#E08A1A', enabled: on && !S.switching })) {
       sfx.buy(); P.payout = null;
-      go(run.phase === 'won' ? 'won' : run.phase === 'bargain' ? 'bargain' : 'shop');
+      go(run.phase === 'won' ? 'won' : 'shop');
     }
   }
   g.restore();

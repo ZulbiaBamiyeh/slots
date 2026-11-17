@@ -161,14 +161,15 @@ function drawShop(on) {
   }
   y += 14;
   const cw = 52, chh = 74, nS = sh.syms.length;
-  const oneRow = W >= (nS + 2) * (cw + 5) + 30;
+  const nC = 2 + (sh.relic ? 1 : 0);
+  const oneRow = W >= (nS + nC) * (cw + 5) + 30;
   const drawOffer = (kind, k, x, yy) => {
-    const o = kind === 'sym' ? sh.syms[k] : sh.charms[k];
-    const sel = B.sel && B.sel.k === kind && B.sel.i === k;
+    const o = kind === 'sym' ? sh.syms[k] : kind === 'relic' ? sh.relic : sh.charms[k];
+    const sel = B.sel && (kind === 'relic' ? B.sel.k === 'offer-relic' : B.sel.k === kind && B.sel.i === k);
     const s = st(`shopcard:${kind}${k}`, () => ({ lift: 0 }));
     s.lift += ((sel ? 5 : 0) - s.lift) * 0.3;
-    card(x, yy, cw, chh, { k: kind, id: o.id }, { price: o.price, afford: run.gold >= o.price, sold: o.sold, sel, lift: s.lift, sc: sel ? 1.05 : 1 });
-    if (on && !o.sold && tapped(x, yy, cw, chh + 6)) { B.sel = { k: kind, i: k }; sfx.select(); }
+    card(x, yy, cw, chh, { k: kind === 'relic' ? (o.kind === 'symbol' ? 'sym' : 'charm') : kind, id: o.id }, { price: o.price, afford: run.gold >= o.price, sold: o.sold, sel, lift: s.lift, sc: sel ? 1.05 : 1 });
+    if (on && !o.sold && tapped(x, yy, cw, chh + 6)) { B.sel = { k: kind === 'relic' ? 'offer-relic' : kind, i: k }; sfx.select(); if (kind === 'relic') djinnMood('smirk', 1.5); }
   };
   const ownSlots = (x, yy, w) => {
     // owned charms + relics
@@ -184,27 +185,31 @@ function drawShop(on) {
       if (on && tapped(sx, sy, sw - 2, 24)) { B.sel = { k: 'own', i: k }; sfx.select(); }
     }
     run.relics.forEach((rl, k) => {
-      const sx = x + k * 20, sy = yy + 39;
+      const sx = x + run.maxCharms * sw + 6 + k * 20, sy = yy + 14;
       rrect(sx, sy, 18, 18, '#7A1838', 1); rrect(sx + 1, sy + 1, 16, 16, '#3A0E22', 1);
       spr(rl.id, sx + 9, sy + 9, pxScale(1));
       if (on && tapped(sx, sy, 18, 18)) { B.sel = { k: 'relic', i: k }; sfx.select(); }
     });
   };
   if (oneRow) {
-    const total = (nS + 2) * (cw + 5) + 10;
+    const total = (nS + nC) * (cw + 5) + 10;
     let x = Math.round((W - total) / 2);
     for (let k = 0; k < nS; k++) { drawOffer('sym', k, x, y); x += cw + 5; }
     x += 10;
     for (let k = 0; k < 2; k++) { drawOffer('charm', k, x, y); x += cw + 5; }
+    if (sh.relic) drawOffer('relic', 0, x, y);
     y += chh + 12;
-    ownSlots(10, y, Math.min(140, W * 0.4));
+    ownSlots(10, y, Math.min(130, W * 0.3));
   } else {
     let x = Math.round((W - (nS * (cw + 4) - 4)) / 2);
     for (let k = 0; k < nS; k++) { drawOffer('sym', k, x, y); x += cw + 4; }
     y += chh + 12;
-    for (let k = 0; k < 2; k++) drawOffer('charm', k, 8 + k * (cw + 4), y);
-    ownSlots(8 + 2 * (cw + 4) + 4, y + 2, W - (8 + 2 * (cw + 4) + 4) - 6);
+    x = Math.round((W - (nC * (cw + 4) - 4)) / 2);
+    for (let k = 0; k < 2; k++) { drawOffer('charm', k, x, y); x += cw + 4; }
+    if (sh.relic) drawOffer('relic', 0, x, y);
     y += chh + 12;
+    ownSlots(8, y, 130);
+    y += 40;
   }
   // bottom buttons
   const byy = bot() - 34;
@@ -219,7 +224,7 @@ function drawShop(on) {
     go('play').then(() => { for (const n of notes) if (n.t === 'curse') { toast(`Pandora's Box: a ${SYM[n.inst.id].name} joins reel ${n.c + 1}.`, '#C79BFF'); sfx.curse(); } });
   }
   // info panel
-  const ix = oneRow ? Math.min(160, W * 0.42) + 14 : 4, iy = oneRow ? y - 2 : y, iw = W - ix - 4, ih = byy - 6 - iy;
+  const ix = oneRow ? Math.min(130, W * 0.3) + 20 + run.relics.length * 20 : 4, iy = oneRow ? y - 2 : y, iw = W - ix - 4, ih = byy - 6 - iy;
   if (ih < 30) return;
   panel(ix, iy, iw, ih, { fill: '#1A1638' });
   const s = B.sel;
@@ -234,6 +239,13 @@ function drawShop(on) {
     } else if (s.k === 'charm' && sh.charms[s.i] && !sh.charms[s.i].sold) {
       const o = sh.charms[s.i]; it = { k: 'charm', id: o.id };
       act = { label: 'BUY', sub: `${o.price} gold`, col: '#3FA55A', dis: !G.canBuyCharm(run, s.i), why: run.gold < o.price ? 'Not enough gold.' : 'Charm slots are full. Sell one first.', fn: () => { G.buyCharm(run, s.i); save(); sfx.buy(); B.sel = null; burst(W / 2, iy, 16, { col: ['#FFD84A', '#FFFFFF'], speed: 80, life: 0.6 }); } };
+    } else if (s.k === 'offer-relic' && sh.relic && !sh.relic.sold) {
+      const o = sh.relic, symbol = o.kind === 'symbol'; it = { k: symbol ? 'sym' : 'charm', id: o.id };
+      const done = () => { sfx.curse(); shake(5); flash(0.12); djinnSay('relic', 'grin'); B.sel = null; if (o.id === 'contract') toast('+20 gold. Tributes are 25% larger.', '#FFD84A'); };
+      act = { label: o.price ? 'BUY' : 'SIGN', sub: o.price ? `${o.price} gold` : 'free', col: '#B0123C', dis: !G.canBuyRelic(run), why: run.gold < o.price ? 'Not enough gold.' : 'All reels are full.', fn: () => {
+        if (symbol) openEditor({ mode: 'shop', closeAfter: true, place: { id: o.id, done: (c, pos) => { G.buyRelic(run, c, pos); done(); }, cancel: () => {} } });
+        else { G.buyRelic(run); save(); done(); }
+      } };
     } else if (s.k === 'own' && run.charms[s.i]) {
       const ch = run.charms[s.i]; it = { k: 'charm', id: ch.id, ch };
       act = { label: 'SELL', sub: `+${G.sellValue(ch.id)} gold`, col: '#B0123C', fn: () => { G.sellCharm(run, s.i); save(); sfx.sell(); B.sel = null; } };
@@ -254,58 +266,11 @@ function drawShop(on) {
     g.save(); g.beginPath(); g.rect(ix + 2, iy + 2, iw - 4, ih - 5); g.clip();
     drawDjinn(ix + 30, iy + ih - 22 * ds + 16 * ds - 6, ds, { rows: 23 });
     g.restore();
-    rich(g, 'Tap a ware to inspect it. A symbol you buy goes on the reel and spot [k]you[] choose.', ix + 62, iy + 10, iw - 70, { col: C.cream });
+    rich(g, 'Tap a ware to inspect it. A symbol you buy goes on the reel and spot [k]you[] choose. [x]Red wares are cursed.[]', ix + 62, iy + 8, iw - 70, { col: C.cream, lh: 9 });
     drawSpeech(ix + 56, iy + ih - 30, 1, iw - 64);
   }
 }
 scenes.shop = { enter: enterShop, draw: drawShop };
-
-// =====================================================================
-// Bargain
-const BG = { sel: -1 };
-function drawBargain(on) {
-  const run = S.run, g = V.g, W = V.W;
-  if (!run || !run.bargain) return;
-  const land = !V.portrait;
-  let y = top() + 4;
-  text(g, 'A BARGAIN, MORTAL?', W / 2, y, { align: 'c', scale: measure('A BARGAIN, MORTAL?', 2) < W - 12 ? 2 : 1, col: '#FF4A6A', outline: '#1A0410' });
-  y += 22;
-  const ds = pxScale(land ? 2 : 3);
-  const dx = land ? W * 0.16 : W / 2, dy = land ? V.H * 0.5 : y + 16 * ds;
-  glow(dx, dy, 60, 'rgba(255,60,90,0.5)', 0.6 + 0.2 * Math.sin(V.t * 2));
-  drawDjinn(dx, dy, ds);
-  if (!land) y += 32 * ds + 4;
-  const cw = 60, chh = 84, cx0 = land ? W * 0.3 : (W - (cw * 2 + 16)) / 2;
-  run.bargain.forEach((r, k) => {
-    const x = cx0 + k * (cw + 16), sel = BG.sel === k;
-    const s = st('bg' + k, () => ({ lift: 0 }));
-    s.lift += ((sel ? 6 : 0) - s.lift) * 0.3;
-    card(x, y, cw, chh, { k: r.kind === 'symbol' ? 'sym' : 'charm', id: r.id }, { sel, lift: s.lift, sc: sel ? 1.06 : 1 });
-    if (on && tapped(x, y, cw, chh)) { BG.sel = k; sfx.select(); djinnMood('smirk', 2); }
-  });
-  const ix = land ? cx0 + (cw + 16) * 2 + 4 : 4, iw = W - ix - 4;
-  const iy = land ? y : y + chh + 12, byy = bot() - 34;
-  const ih = byy - 6 - iy;
-  panel(ix, iy, iw, ih, { fill: '#2A0A1C', hi: '#7A1838' });
-  if (BG.sel >= 0) { const r = run.bargain[BG.sel]; infoCard(ix + 3, iy + 3, iw - 6, { k: r.kind === 'symbol' ? 'sym' : 'charm', id: r.id }); }
-  else rich(g, 'One cursed relic, free of charge. [x]Every relic has a catch.[] Tap one to read the fine print, or refuse.', ix + 8, iy + 10, iw - 16);
-  drawSpeech(dx + 14 * ds, dy - 8 * ds, land ? 1 : -1, land ? 120 : W / 2 - 20);
-  const bw = (W - 13) / 2;
-  if (button('bg-no', 4, byy, bw, 34, 'REFUSE', { col: '#5B4FA8', enabled: on && !S.switching })) {
-    G.refuseBargain(run); save(); djinnSay('refuse', 'scowl'); go('shop');
-  }
-  if (button('bg-yes', 9 + bw, byy, bw, 34, 'ACCEPT', { col: '#B0123C', enabled: on && !S.switching, disabled: BG.sel < 0 })) {
-    const r = run.bargain[BG.sel];
-    const inst = G.takeRelic(run, BG.sel);
-    sfx.curse(); shake(5); flash(0.15); djinnSay('relic', 'grin');
-    if (r.id === 'contract') toast('+20 gold. Tributes are 25% larger.', '#FFD84A');
-    if (inst) {
-      if (!G.reelsWithRoom(run).length) { toast('No room on your reels. The relic crumbles.', '#FF7A8A'); save(); go('shop'); }
-      else openEditor({ mode: 'shop', closeAfter: true, place: { id: inst.id, inst, done: (c, pos) => { G.insertAt(run, c, pos, inst); go('shop'); } } });
-    } else { save(); go('shop'); }
-  }
-}
-scenes.bargain = { enter() { setMood('bargain'); A.mode = 'shop'; A.intensity = 0.6; BG.sel = -1; DJ.kind = lampDjinn(S.run); djinnMood('smirk', 3); sfx.curse(); save(); }, draw: drawBargain };
 
 // =====================================================================
 // Title
@@ -388,7 +353,7 @@ function cycleLamp(d) {
   djinnMood('grin', 0.8); save();
 }
 export function sceneFor(run) {
-  return run.phase === 'shop' ? 'shop' : run.phase === 'bargain' ? 'bargain' : run.phase === 'won' ? 'won' : 'play';
+  return run.phase === 'shop' ? 'shop' : run.phase === 'won' ? 'won' : 'play';
 }
 scenes.title = { enter() { setMood('title'); A.mode = 'title'; A.intensity = 0.4; TI.armed = false; }, draw: drawTitle };
 
@@ -444,7 +409,7 @@ function drawWon(on) {
   const byy = Math.min(bot() - 34, y);
   const bw = (w - 5) / 2;
   if (button('wn-title', x, byy, bw, 34, 'FINISH', { col: '#5B4FA8', enabled: on && !S.switching })) { S.run = null; save(); go('title'); }
-  if (button('wn-end', x + bw + 5, byy, bw, 34, 'ENDLESS', { col: '#B0123C', sub: 'keep going', enabled: on && !S.switching })) { G.continueEndless(run); save(); go('bargain'); }
+  if (button('wn-end', x + bw + 5, byy, bw, 34, 'ENDLESS', { col: '#B0123C', sub: 'keep going', enabled: on && !S.switching })) { G.continueEndless(run); save(); go('shop'); }
 }
 scenes.won = {
   enter() {
@@ -487,7 +452,8 @@ const PAGES = [
   ['LINES', '3 or more of the same [k]family[] side by side in a row: [m]+1, +2 or +4 Mult[]. 3 or more [k]identical[] symbols: [m]x2, x3 or x5 Mult[]. Tap any symbol to read it.'],
   ['WISHES', 'After the reels land you may spend a Wish: [k]HOLD[] the reels you like and [k]RESPIN[] the rest, or [k]NUDGE[] one reel a single step with the arrows. Then [k]CASH IN[].'],
   ['RIG THE MACHINE', 'At the Bazaar, buy symbols and choose the reel and the exact spot. Each reel is a loop showing 3 in a row, so neighbours you stack will land together. [k]Banish[] symbols to make reels short and reliable.'],
-  ['CHARMS + RELICS', 'Charms bend the rules for the whole run. After each [x]Decree[] the djinn offers a [x]cursed relic[]: very strong, with a catch. You can always refuse.'],
+  ['PICK A BUILD', 'The starting reels will not carry you past Act 1. Most [m]Mult[] only switches on when you commit: enough of one family on the board, long lines, short reels. Read the charms and build toward one.'],
+  ['CURSED RELICS', 'Now and then the Bazaar sells a [x]cursed relic[] cheaply: very strong, with a catch, and it can never be sold. They need no charm slot.'],
 ];
 modals.help = () => {
   const g = V.g, W = V.W;

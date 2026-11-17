@@ -6,8 +6,8 @@ const N = +process.argv[2] || 200;
 const lamp = process.argv[3] || 'azure';
 const smart = (process.argv[4] || 'smart') === 'smart';
 const RV = { C: 1, U: 2, R: 3, L: 4, X: 0 };
-const reached = Array(12).fill(0), spinTotals = Array.from({ length: 12 }, () => []);
-let wins = 0;
+const died = Array(12).fill(0), reached = Array(12).fill(0), spinTotals = Array.from({ length: 12 }, () => []);
+let wins = 0; const power = Array.from({ length: 12 }, () => []);
 
 function avgScore(run, K = 40) {
   const so = run.offsets.slice(), ss = run.sr, sp = run.spinInRound, sl = run.spinsLeft;
@@ -82,6 +82,24 @@ function shopSmart(run) {
       }
       consider(bp.s - base, o.price, () => G.buySym(run, k, bp.c, bp.pos));
     });
+    if (G.canBuyRelic(run) && run.shop.relic.id !== 'contract') {
+      const o = run.shop.relic;
+      if (o.kind === 'charm') {
+        run.relics.push({ id: o.id });
+        const s = avgScore(run); run.relics.pop();
+        consider(s - base, o.price + 1, () => G.buyRelic(run));
+      } else {
+        let bp = null;
+        for (let t = 0; t < 5; t++) {
+          const rooms = G.reelsWithRoom(run); const c = rooms[Math.floor(Math.random() * rooms.length)];
+          const pos = Math.floor(Math.random() * run.reels[c].length);
+          run.reels[c].splice(pos, 0, { id: o.id, u: -1, b: 0 });
+          const s = avgScore(run); run.reels[c].splice(pos, 1);
+          if (!bp || s > bp.s) bp = { s, c, pos };
+        }
+        consider(bp.s - base, o.price + 1, () => G.buyRelic(run, bp.c, bp.pos));
+      }
+    }
     for (let t = 0; t < 6; t++) {
       const c = Math.floor(Math.random() * 5); if (!G.canBanish(run, c)) continue;
       const pos = Math.floor(Math.random() * run.reels[c].length);
@@ -97,18 +115,12 @@ function shopSmart(run) {
 for (let n = 0; n < N; n++) {
   const run = G.newRun(lamp, 0, n * 7919 + 13);
   for (;;) {
-    reached[Math.min(11, run.round)]++;
+    reached[Math.min(11, run.round)]++; power[Math.min(11, run.round)].push(avgScore(run, 60));
     let out;
     do { out = playSpin(run); } while (out === 'next');
     if (out === 'over') break;
     G.payout(run);
     if (run.phase === 'won') { wins++; break; }
-    if (run.phase === 'bargain') {
-      if (Math.random() < 0.5) {
-        const inst = G.takeRelic(run, 0);
-        if (inst) { const rooms = G.reelsWithRoom(run); if (rooms.length) G.insertAt(run, rooms[0], 0, inst); }
-      } else G.refuseBargain(run);
-    }
     (smart ? shopSmart : shopDumb)(run);
     G.nextRound(run);
   }
@@ -116,4 +128,4 @@ for (let n = 0; n < N; n++) {
 const q = (a, p) => a.length ? a.slice().sort((x, y) => x - y)[Math.floor(a.length * p)] : 0;
 console.log(`lamp=${lamp} bot=${smart ? 'smart' : 'dumb'} runs=${N} wins=${wins} (${(100 * wins / N).toFixed(1)}%)`);
 const dummy = G.newRun(lamp, 0, 1);
-for (let r = 0; r < 9; r++) console.log(`round ${r + 1}: tribute ${String(G.tributeFor(dummy, r)).padStart(6)}  reached ${(100 * reached[r] / N).toFixed(0).padStart(3)}%  spin p50 ${q(spinTotals[r], .5)}  p90 ${q(spinTotals[r], .9)}`);
+for (let r = 0; r < 9; r++) console.log(`round ${r + 1}: tribute ${String(G.tributeFor(dummy, r)).padStart(6)}  reached ${(100 * reached[r] / N).toFixed(0).padStart(3)}%  raw spin avg p25/p50/p75 ${[.25, .5, .75].map((p) => Math.round(q(power[r], p))).join(' / ')}`);

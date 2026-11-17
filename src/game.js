@@ -27,13 +27,13 @@ export const hasRelic = (run, id) => run.relics.some((c) => c.id === id);
 export function newRun(lampId = 'azure', wrath = 0, seed = (Math.random() * 2 ** 31) | 0) {
   const lamp = LAMP[lampId];
   const run = {
-    v: 2, rs: seed | 0, lamp: lampId, wrath, uid: 1,
+    v: 3, rs: seed | 0, lamp: lampId, wrath, uid: 1,
     reels: [], charms: [], relics: [], maxCharms: lamp.slots || 5,
     gold: lamp.gold, round: 0, phase: 'ready', endless: false,
     offsets: [0, 0, 0, 0, 0], held: [false, false, false, false, false],
     spinsLeft: 0, wishesLeft: 0, wishesUsed: 0, spinInRound: 0, spinNo: 0,
     roundScore: 0, sr: [], glare: -1, tributeMul: 1,
-    decrees: [], shop: null, bargain: null,
+    decrees: [], shop: null,
     stats: { bestSpin: 0, spins: 0, tributes: 0, bought: 0 },
   };
   run.reels = lamp.reels.map((r) => r.map((id) => mk(run, id)));
@@ -104,7 +104,7 @@ export function startRound(run) {
 
 function rollSpin(run) {
   run.sr = Array.from({ length: COLS * ROWS }, () => rnd(run));
-  run.glare = hasRelic(run, 'evileye') ? ri(run, COLS * ROWS) : -1;
+  run.glare = hasRelic(run, 'evileye') ? ri(run, COLS) : -1; // a whole reel
 }
 export function spin(run) {
   if (run.phase !== 'ready' || run.spinsLeft <= 0) return false;
@@ -168,7 +168,7 @@ export function board(run) {
   return out;
 }
 
-const LINE_ADD = { 3: 1, 4: 2, 5: 4 }, LINE_MUL = { 3: 2, 4: 3, 5: 5 };
+const LINE_ADD = { 3: 1, 4: 2, 5: 3 }, LINE_MUL = { 3: 2, 4: 3, 5: 5 };
 
 function findLines(run, G, dec) {
   const lines = [];
@@ -225,7 +225,7 @@ export function evaluate(run) {
     if (dec === 'silence' && f === 'magic') kill(x, 'decree');
     if (dec === 'mirage' && x.r === 2) kill(x, 'decree');
     if (hasRelic(run, 'bloodmoon') && f === 'garden') kill(x, 'moon');
-    if (run.glare === x.i) { kill(x, 'glare'); pre.push({ t: 'glare', i: x.i }); }
+    if (run.glare === x.c) { kill(x, 'glare'); pre.push({ t: 'glare', i: x.i }); }
   }
   const act = (x) => !x.dead && !x.eaten && !x.gilded && !x.charmed;
   const curseOn = (x) => x.def.curse && act(x) && !incense;
@@ -270,7 +270,7 @@ export function evaluate(run) {
   }
   for (const x of G) if (curseOn(x) && x.def.id === 'rot') for (const j of NB[x.i]) if (G[j].def.fam === 'fruit') G[j].add -= 2;
   if (hasCharm(run, 'sun')) for (const x of G) if (x.def.fam === 'fruit') x.add += 2;
-  if (hasRelic(run, 'ring')) for (const x of G) x.add += 2;
+  if (hasRelic(run, 'ring')) for (const x of G) x.add += 3;
   // multiplicative effects
   const baseOf = (x) => x.def.coins + x.inst.b + x.add;
   for (const x of G) {
@@ -293,13 +293,13 @@ export function evaluate(run) {
   // final coins per cell
   for (const x of G) {
     if (x.dead || x.eaten) { x.coins = 0; continue; }
-    if (x.gilded) { x.coins = 12; continue; }
+    if (x.gilded) { x.coins = 20; continue; }
     if (x.def.curse) {
       x.coins = x.charmed ? 10 : (x.def.id === 'scorpion' && !incense ? -8 : 0);
       continue;
     }
     let v = baseOf(x) * x.mul;
-    if (x.def.id === 'foolsgold' && run.sr[x.i] < 0.25) v = -20 * x.mul;
+    if (x.def.id === 'foolsgold' && run.sr[x.i] < 0.25) v = -40 * x.mul;
     if (dec === 'famine' && x.def.fam === 'fruit') v = Math.floor(v / 2);
     x.coins = Math.max(v, x.def.id === 'foolsgold' ? -1e9 : 0);
   }
@@ -337,7 +337,7 @@ export function evaluate(run) {
       if (d.id === 'pearl') grow(x, 1 * g2);
       if (d.id === 'wateringcan') for (const j of NB[x.i]) if (G[j].def.fam === 'garden' && !G[j].dead) grow(G[j], 1 * g2);
       if (d.id === 'bat') {
-        grow(x, 3 * g2);
+        grow(x, 4 * g2);
         let b = null; for (const j of NB[x.i]) { const y = G[j]; if (y.def.coins + y.inst.b > 0 && y.def.fam !== 'relic' && (!b || y.coins > b.coins)) b = y; }
         if (b) grow(b, -1);
       }
@@ -352,26 +352,31 @@ export function evaluate(run) {
   run.charms.forEach((ch, ci) => {
     const src = { charm: ci };
     const cnt = (f) => G.filter(f).length;
+    const fam = (f) => cnt((x) => x.def.fam === f);
     switch (ch.id) {
-      case 'tambourine': addM(src, cnt((x) => x.def.fam === 'creature')); break;
-      case 'fruitbowl': addM(src, Math.floor(cnt((x) => x.def.fam === 'fruit') / 3)); break;
-      case 'hookah': if (run.spinInRound === 1) addM(src, 4); break;
+      case 'tambourine': addM(src, 2 * pre.filter((e) => e.t === 'eat' || e.t === 'crack' || e.t === 'open').length); break;
+      case 'hookah': if (run.spinInRound === 1) addM(src, 3); break;
       case 'abacus': addM(src, 2 * lines.length); break;
       case 'loupe': addM(src, 2 * cnt((x) => x.def.tags.includes('gem'))); break;
-      case 'purse': addM(src, Math.min(8, Math.floor(run.gold / 4))); break;
-      case 'rainbow': addM(src, Math.floor(new Set(G.flatMap((x) => x.def.col)).size / 2)); break;
+      case 'purse': addM(src, Math.min(6, Math.floor(run.gold / 5))); break;
+      case 'rainbow': if (new Set(G.flatMap((x) => x.def.col)).size >= 8) addM(src, 4); break;
+      case 'fruitbowl': if (fam('fruit') >= 11) mulM(src, 2); break;
+      case 'whistle': if (fam('creature') >= 4) mulM(src, 2); break;
+      case 'vault': if (fam('treasure') >= 6) mulM(src, 2); break;
+      case 'trellis': if (fam('garden') >= 4) mulM(src, 2); break;
+      case 'spellbook': if (fam('magic') >= 3) mulM(src, 2); break;
       case 'scimitar': if (run.wishesUsed === 0) mulM(src, 2); break;
       case 'moon': if (run.spinsLeft === 0) mulM(src, 2); break;
       case 'bell': for (let k = 0; k < lines.length; k++) mulM(src, 1.5); break;
-      case 'scarab': mulM(src, 1 + 0.25 * (ch.n || 0)); break;
+      case 'scarab': mulM(src, 1 + 0.2 * (ch.n || 0)); break;
       case 'tightrope': if (run.reels.every((r) => r.length <= 5)) mulM(src, 3); break;
-      case 'seal': mulM(src, 3); break;
+      case 'seal': if (lines.some((l) => l.len === 5)) mulM(src, 3); break;
     }
   });
   run.relics.forEach((rl, ri2) => {
     const src = { relic: ri2 };
     if (rl.id === 'evileye') mulM(src, 2);
-    if (rl.id === 'pandora') addM(src, 5);
+    if (rl.id === 'pandora') addM(src, 6);
     if (rl.id === 'sandtimer') mulM(src, 4);
   });
   coins = Math.max(0, coins);
@@ -423,41 +428,17 @@ export function payout(run) {
   const total = rows.reduce((a, r) => a + r.v, 0);
   run.gold += total;
   run.stats.tributes++;
-  for (const c of run.charms) if (c.id === 'scarab') c.n = (c.n || 0) + 1;
-  const wasBoss = isBoss(run);
   const final = run.round === TRIBUTES.length - 1 && !run.endless;
-  run.phase = final ? 'won' : wasBoss ? 'bargain' : 'shop';
-  if (run.phase === 'bargain') genBargain(run);
+  run.phase = final ? 'won' : 'shop';
   if (run.phase === 'shop') genShop(run, true);
   return { rows, total };
 }
 
 export function continueEndless(run) {
   run.endless = true;
-  run.phase = 'bargain';
-  genBargain(run);
-}
-
-// ---------- Bargain
-export function genBargain(run) {
-  const pool = RELICS.filter((r) => r.kind === 'symbol' || !hasRelic(run, r.id));
-  run.bargain = shuffle(run, pool).slice(0, 2).map((r) => ({ ...r }));
-}
-// For a symbol relic the UI must then call placeSymbol with the returned instance.
-export function takeRelic(run, k) {
-  const r = run.bargain[k];
-  run.bargain = null;
-  let inst = null;
-  if (r.kind === 'symbol') inst = mk(run, r.id);
-  else {
-    run.relics.push({ id: r.id, u: run.uid++ });
-    if (r.id === 'contract') { run.gold += 20; run.tributeMul *= 1.25; }
-  }
-  genShop(run, true);
   run.phase = 'shop';
-  return inst;
+  genShop(run, true);
 }
-export function refuseBargain(run) { run.bargain = null; genShop(run, true); run.phase = 'shop'; }
 
 // ---------- Bazaar
 const WEIGHTS = [
@@ -493,8 +474,15 @@ export function genShop(run, fresh) {
     const c = pick(run, pool);
     charms.push({ id: c.id, price: RARITY[rar].charm, sold: false });
   }
+  // sometimes the djinn slips a cursed relic onto the table
+  let relic = null;
+  if (rnd(run) < (fresh ? 0.6 : 0.35)) {
+    const pool = RELICS.filter((r) => r.kind === 'symbol' || !hasRelic(run, r.id));
+    const r = pick(run, pool);
+    relic = { id: r.id, kind: r.kind, price: (r.kind === 'symbol' ? SYM[r.id] : CHARM[r.id]).price, sold: false };
+  }
   const prev = run.shop;
-  run.shop = { syms, charms, reroll: fresh ? 2 : prev.reroll + 1, banish: fresh ? 2 : prev.banish, notes };
+  run.shop = { syms, charms, relic, reroll: fresh ? 2 : prev.reroll + 1, banish: fresh ? 2 : prev.banish, notes };
   return notes;
 }
 export const rerollCost = (run) => Math.max(0, run.shop.reroll - (hasCharm(run, 'merchant') ? 1 : 0));
@@ -528,6 +516,24 @@ export function buyCharm(run, k) {
   run.charms.push({ id: o.id, u: run.uid++, n: 0 });
   return true;
 }
+export function canBuyRelic(run) {
+  const o = run.shop.relic;
+  return !!o && !o.sold && run.gold >= o.price && (o.kind !== 'symbol' || reelsWithRoom(run).length > 0);
+}
+// Charm relics take effect at once. Symbol relics need a reel and position.
+export function buyRelic(run, c, pos) {
+  if (!canBuyRelic(run)) return false;
+  const o = run.shop.relic;
+  if (o.kind === 'symbol') {
+    if (run.reels[c].length >= MAX_REEL) return false;
+    insertAt(run, c, pos, mk(run, o.id));
+  } else {
+    run.relics.push({ id: o.id, u: run.uid++ });
+    if (o.id === 'contract') { run.gold += 20; run.tributeMul *= 1.25; }
+  }
+  run.gold -= o.price; o.sold = true; run.stats.bought++;
+  return true;
+}
 export const sellValue = (id) => Math.floor(RARITY[CHARM[id].rar].charm / 2);
 export function sellCharm(run, k) {
   const c = run.charms[k]; if (!c) return false;
@@ -540,6 +546,7 @@ export function banish(run, c, pos) {
   if (!canBanish(run, c)) return false;
   run.gold -= run.shop.banish;
   run.shop.banish++;
+  for (const ch of run.charms) if (ch.id === 'scarab') ch.n = (ch.n || 0) + 1;
   removeAt(run, c, pos);
   return true;
 }

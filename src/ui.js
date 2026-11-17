@@ -113,7 +113,7 @@ function itemExtra(it) {
     return `Pays [c]${d.coins + b}[]${b ? ` (${d.coins}${b > 0 ? '+' : ''}${b} grown)` : ''}`;
   }
   if (it.k === 'charm' && it.ch) {
-    if (it.id === 'scarab') return `Now [m]x${(1 + 0.25 * (it.ch.n || 0)).toFixed(2)} Mult[]`;
+    if (it.id === 'scarab') return `Now [m]x${(1 + 0.2 * (it.ch.n || 0)).toFixed(1)} Mult[]`;
     if (it.id === 'sandtimer') return `[x]${it.ch.n ?? 8} spins left[]`;
   }
   return '';

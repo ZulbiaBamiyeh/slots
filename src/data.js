@@ -87,48 +87,54 @@ export const CURSES = [
 
 // Cursed relics that live on a reel.
 export const RELIC_SYMBOLS = [
-  S('midas', 'Midas Hand', 'relic', 'gold', 'L', 0, 'Touching symbols turn to gold and pay [c]12[] each. [x]Gilded symbols lose their effects.[]'),
-  S('blackcat', 'Black Cat', 'relic', 'black', 'R', 0, 'Touching symbols score [c]x3 coins[]. [x]-1 Wish each round while it is on your reels.[]'),
-  S('bat', 'Vampire Bat', 'relic', 'black red', 'R', 0, 'Grows [c]+3[] forever each time it lands. [x]Drains 1 forever from its best neighbour.[]'),
-  S('foolsgold', "Fool's Gold", 'relic', 'gold', 'U', 20, 'Pays [c]20[]. [x]1 time in 4 it is -20 instead.[]'),
+  S('midas', 'Midas Hand', 'relic', 'gold', 'L', 0, 'Touching symbols turn to gold and pay [c]20[] each. [x]Gilded symbols lose their effects.[]', { price: 4 }),
+  S('blackcat', 'Black Cat', 'relic', 'black', 'R', 0, 'Touching symbols score [c]x3 coins[]. [x]-1 Wish each round while it is on your reels.[]', { price: 3 }),
+  S('bat', 'Vampire Bat', 'relic', 'black red', 'R', 0, 'Grows [c]+4[] forever each time it lands. [x]Drains 1 forever from its best neighbour.[]', { price: 3 }),
+  S('foolsgold', "Fool's Gold", 'relic', 'gold', 'U', 40, 'Pays [c]40[]. [x]1 time in 4 it is -40 instead.[]', { price: 2 }),
 ];
 
 const C = (id, name, rar, desc, fx = {}) => ({ id, name, rar, desc, ...fx });
 
 export const CHARMS = [
+  // coins and utility
   C('sun', 'Sun', 'C', 'All [k]fruit[] [c]+2 coins[].'),
-  C('tambourine', 'Tambourine', 'C', '[m]+1 Mult[] per [k]creature[] on the board.'),
-  C('fruitbowl', 'Fruit Bowl', 'C', '[m]+1 Mult[] per 3 [k]fruit[] on the board.'),
-  C('hookah', 'Hookah', 'C', '[m]+4 Mult[] on the first Spin of each round.'),
-  C('abacus', 'Abacus', 'C', '[m]+2 Mult[] per [k]line[] on the board.'),
   C('scales', 'Golden Scales', 'C', 'Earn [g]1 gold[] per unused Wish when a tribute is paid.'),
   C('incense', 'Incense', 'C', '[v]Curses[] have no effect.'),
+  C('hookah', 'Hookah', 'C', '[m]+3 Mult[] on the first Spin of each round.'),
+  C('abacus', 'Abacus', 'C', '[m]+2 Mult[] per [k]line[] on the board.'),
+  C('tambourine', 'Feast Drum', 'C', '[m]+2 Mult[] each time a symbol is [k]eaten[], [k]cracked[] or [k]opened[].'),
   C('dice', 'Loaded Dice', 'U', '[k]+1 Wish[] each round.'),
   C('compass', 'Compass', 'U', 'Corner symbols score [c]x3 coins[].'),
-  C('loupe', "Jeweller's Loupe", 'U', '[m]+2 Mult[] per [k]gem[] on the board.'),
-  C('glove', "Gardener's Glove", 'U', 'Everything that grows forever grows [k]twice as fast[].'),
-  C('scimitar', 'Scimitar', 'U', '[m]x2 Mult[] while you have used no Wishes this round.'),
-  C('purse', "Miser's Purse", 'U', '[m]+1 Mult[] per [g]4 gold[] you hold (max +8).'),
+  C('glove', 'Garden Glove', 'U', 'Everything that grows forever grows [k]twice as fast[].'),
   C('merchant', 'Rug Merchant', 'U', 'The Bazaar offers 1 more symbol. Rerolls cost [g]1 less[].'),
+  C('loupe', 'Gem Loupe', 'U', '[m]+2 Mult[] per [k]gem[] on the board.'),
+  C('purse', "Miser's Purse", 'U', '[m]+1 Mult[] per [g]5 gold[] you hold (max +6).'),
+  C('rainbow', 'Rainbow', 'U', '[m]+4 Mult[] if the board shows 8 or more different [k]colours[].'),
+  // build payoffs: Mult only if you commit
+  C('fruitbowl', 'Fruit Bowl', 'U', '[m]x2 Mult[] if the board holds 11 or more [k]fruit[].'),
+  C('whistle', 'Pan Flute', 'U', '[m]x2 Mult[] if the board holds 4 or more [k]creatures[].'),
+  C('vault', 'Vault Door', 'U', '[m]x2 Mult[] if the board holds 6 or more [k]treasure[].'),
+  C('trellis', 'Trellis', 'U', '[m]x2 Mult[] if the board holds 4 or more [k]garden[] symbols.'),
+  C('spellbook', 'Spellbook', 'U', '[m]x2 Mult[] if the board holds 3 or more [k]Magic[] symbols.'),
+  C('scimitar', 'Scimitar', 'U', '[m]x2 Mult[] while you have used no Wishes this round.'),
   C('moon', 'Crescent Moon', 'U', '[m]x2 Mult[] on your final Spin of a round.'),
-  C('rainbow', 'Rainbow', 'U', '[m]+1 Mult[] per 2 different [k]colours[] on the board.'),
   C('sandglass', 'Sandglass', 'R', '[k]+1 Spin[] each round.'),
   C('mirror', 'Mirror', 'R', 'Symbols on the [k]middle reel[] trigger again.'),
   C('bell', 'Jackpot Bell', 'R', 'Every [k]line[] gives an extra [m]x1.5 Mult[].'),
-  C('scarab', 'Scarab', 'R', 'Gains [m]x0.25 Mult[] each time you pay a tribute.'),
+  C('scarab', 'Scarab', 'R', 'Gains [m]x0.2 Mult[] each time you [k]banish[] a symbol while you own it.'),
   C('tightrope', 'Tightrope', 'R', '[m]x3 Mult[] while every reel has 5 or fewer symbols.'),
-  C('seal', "Sultan's Seal", 'L', '[m]x3 Mult[].'),
+  C('seal', "Sultan's Seal", 'L', '[m]x3 Mult[] if a [k]line of 5[] is on the board.'),
 ];
 
-// Cursed relics that sit beside your charms (no slot needed, cannot be sold).
+// Cursed relics: sold cheap in the Bazaar. They need no charm slot and can never be sold.
 export const RELIC_CHARMS = [
-  C('evileye', 'Evil Eye', 'R', '[m]x2 Mult[]. [x]Each spin it glares at one symbol, which scores nothing.[]'),
-  C('pandora', "Pandora's Box", 'L', '[m]+5 Mult[]. [x]Adds a curse to your reels at the start of every round.[]'),
-  C('contract', "Djinn's Contract", 'R', '[g]+20 gold[] right now. [x]Every tribute is 25% larger, forever.[]'),
-  C('bloodmoon', 'Blood Moon', 'L', '[k]Red[] and [k]pink[] symbols score [c]x3 coins[]. [x]Garden symbols score nothing.[]'),
-  C('ring', "Djinn's Ring", 'L', 'Every symbol [c]+2 coins[]. [x]Tribute rewards pay 2 gold less.[]'),
-  C('paw', "Monkey's Paw", 'L', 'Bazaar symbols are always [k]Rare[] or better. [x]Every Bazaar visit adds a curse.[]'),
-  C('sandtimer', 'Sand Timer of Ruin', 'R', '[m]x4 Mult[] for 8 spins. [x]Then it shatters, adding 3 curses.[]', { count: 8 }),
+  C('evileye', 'Evil Eye', 'R', '[m]x2 Mult[]. [x]Each spin it glares at one whole reel, which scores nothing.[]', { price: 3 }),
+  C('pandora', "Pandora's Box", 'L', '[m]+6 Mult[]. [x]Adds a curse to your reels at the start of every round.[]', { price: 4 }),
+  C('contract', "Djinn's Contract", 'R', '[g]+20 gold[] right now. [x]Every tribute is 25% larger, forever.[]', { price: 0 }),
+  C('bloodmoon', 'Blood Moon', 'L', '[k]Red[] and [k]pink[] symbols score [c]x3 coins[]. [x]Garden symbols score nothing.[]', { price: 4 }),
+  C('ring', "Djinn's Ring", 'L', 'Every symbol [c]+3 coins[]. [x]Tribute rewards pay 2 gold less.[]', { price: 3 }),
+  C('paw', "Monkey's Paw", 'L', 'Bazaar symbols are always [k]Rare[] or better. [x]Every Bazaar visit adds a curse.[]', { price: 3 }),
+  C('sandtimer', 'Ruin Timer', 'R', '[m]x4 Mult[] for 8 spins. [x]Then it shatters, adding 3 curses.[]', { count: 8, price: 3 }),
 ];
 
 export const DECREES = [
@@ -148,16 +154,16 @@ export const LAMPS = [
     id: 'azure', name: 'Azure Lamp', djinn: 'blue', desc: 'A balanced orchard. The classic bargain.',
     unlock: null, gold: 5,
     reels: [
-      ['cherry', 'leaf', 'banana', 'fig', 'coin', 'lemon'],
-      ['cherry', 'banana', 'monkey', 'coin', 'fig', 'seed'],
-      ['cherry', 'lemon', 'banana', 'mouse', 'coin', 'date'],
-      ['cherry', 'banana', 'cat', 'fig', 'coin', 'leaf'],
-      ['cherry', 'lemon', 'banana', 'pearl', 'coin', 'fig'],
+      ['cherry', 'leaf', 'banana', 'fig', 'lemon', 'seed'],
+      ['cherry', 'banana', 'monkey', 'fig', 'date', 'mouse'],
+      ['cherry', 'lemon', 'coin', 'cat', 'leaf', 'pearl'],
+      ['banana', 'fig', 'coin', 'lemon', 'leaf', 'date'],
+      ['lemon', 'fig', 'banana', 'coin', 'pearl', 'date'],
     ],
   },
   {
-    id: 'rose', name: 'Rose Lamp', djinn: 'pink', desc: 'A patient garden. +1 Wish each round, but less gold.',
-    unlock: 'Pay 3 tributes in one run', gold: 3, wishes: 1,
+    id: 'rose', name: 'Rose Lamp', djinn: 'pink', desc: 'A patient garden. +1 Wish each round and tributes 15% smaller, but less gold.',
+    unlock: 'Pay 3 tributes in one run', gold: 3, wishes: 1, trib: 0.85,
     reels: [
       ['seed', 'leaf', 'cherry', 'rose', 'fig', 'seed'],
       ['peach', 'rose', 'seed', 'lemon', 'coin', 'cherry'],
@@ -167,8 +173,8 @@ export const LAMPS = [
     ],
   },
   {
-    id: 'gilded', name: 'Gilded Lamp', djinn: 'gold', desc: 'A vault of treasure and 12 gold, but only 4 charm slots.',
-    unlock: 'Pay 6 tributes in one run', gold: 12, slots: 4,
+    id: 'gilded', name: 'Gilded Lamp', djinn: 'gold', desc: 'A vault of treasure and 12 gold, but only 4 charm slots and tributes 50% larger.',
+    unlock: 'Pay 6 tributes in one run', gold: 12, slots: 4, trib: 1.5,
     reels: [
       ['coin', 'pearl', 'cherry', 'coin', 'fig', 'ruby'],
       ['coin', 'chest', 'key', 'banana', 'coin', 'pearl'],
@@ -178,8 +184,8 @@ export const LAMPS = [
     ],
   },
   {
-    id: 'ember', name: 'Ember Lamp', djinn: 'red', desc: 'Short, hot reels with an Oil Lamp. Tributes are 20% larger.',
-    unlock: 'Win a run', gold: 5, trib: 1.2,
+    id: 'ember', name: 'Ember Lamp', djinn: 'red', desc: 'Short, hot reels with an Oil Lamp. Tributes are 30% larger.',
+    unlock: 'Win a run', gold: 5, trib: 1.3,
     reels: [
       ['cherry', 'banana', 'fig', 'lemon', 'coin'],
       ['cherry', 'banana', 'monkey', 'fig', 'coin'],
@@ -191,7 +197,7 @@ export const LAMPS = [
 ];
 
 // Tribute targets for the 9 rounds (3 acts x small / big / decree).
-export const TRIBUTES = [300, 500, 800, 1400, 2200, 3500, 5500, 8500, 14000];
+export const TRIBUTES = [400, 800, 1400, 2600, 4400, 7200, 12000, 19000, 30000];
 export const ROUND_NAMES = ['Small Tribute', 'Grand Tribute', 'Decree'];
 export const ACT_NAMES = ['The Bazaar Gate', 'The Sultan\'s Hall', 'The Heart of the Lamp'];
 export const REWARDS = [4, 5, 7];
