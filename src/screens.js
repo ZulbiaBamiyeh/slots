@@ -256,7 +256,7 @@ function drawShop(on) {
       } };
     } else if (s.k === 'own' && run.charms[s.i]) {
       const ch = run.charms[s.i]; it = { k: 'charm', id: ch.id, ch };
-      act = { label: 'SELL', sub: `+${G.sellValue(ch.id)} gold`, col: '#B0123C', fn: () => { G.sellCharm(run, s.i); save(); sfx.sell(); B.sel = null; } };
+      act = { label: 'SELL', sub: `+${G.sellValue(ch.id)} gold`, col: '#B0123C', order: true, fn: () => { G.sellCharm(run, s.i); save(); sfx.sell(); B.sel = null; } };
     } else if (s.k === 'relic' && run.relics[s.i]) it = { k: 'charm', id: run.relics[s.i].id, ch: run.relics[s.i] };
     else if (s.k === 'decree') it = { k: 'decree', id: s.id };
   }
@@ -266,6 +266,12 @@ function drawShop(on) {
       const aw = Math.min(90, iw - 12), ay = iy + ih - 30;
       if (ay > iy + 30) {
         if (act.dis && act.why) text(g, act.why, ix + 8, ay + 8, { col: '#FF7A8A' });
+        if (act.order) {
+          // charms score left to right, so their order is the player's to set
+          if (button('sh-ml', ix + 6, ay, 26, 26, '<', { col: '#5B4FA8', enabled: on, disabled: s.i <= 0 })) { B.sel = { k: 'own', i: G.moveCharm(run, s.i, -1) }; save(); }
+          if (button('sh-mr', ix + 36, ay, 26, 26, '>', { col: '#5B4FA8', enabled: on, disabled: s.i >= run.charms.length - 1 })) { B.sel = { k: 'own', i: G.moveCharm(run, s.i, 1) }; save(); }
+          if (ay - 12 > iy + infoHeight(it, iw - 6) + 4) text(g, 'Charms score left to right.', ix + 8, ay - 12, { col: C.dim });
+        }
         if (button('sh-act', ix + iw - aw - 6, ay, aw, 26, act.label, { col: act.col, sub: act.sub, enabled: on, disabled: act.dis })) act.fn();
       }
     }

@@ -447,6 +447,45 @@ export function cashIn(run) {
   return res;
 }
 
+// What each owned charm would do on an evaluated board. `on` is true or false for conditional
+// charms and null for passive ones; `note` is a short status line for its tooltip.
+export function charmStates(run, res) {
+  const G = res.cells, n = (f) => G.filter(f).length, fam = (f) => n((x) => x.def.fam === f);
+  const gems = n((x) => x.def.tags.includes('gem')), lines = res.lines.length;
+  const need = (have, goal, label) => ({ on: have >= goal, note: `${label} on board: ${have} / ${goal}` });
+  return run.charms.map((ch) => {
+    switch (ch.id) {
+      case 'tambourine': return { on: res.eats > 0, note: `${res.eats} eaten, cracked or opened: +${2 * res.eats} Mult` };
+      case 'hookah': return { on: run.spinInRound === 1, note: run.spinInRound === 1 ? 'First spin: active' : 'Not the first spin' };
+      case 'abacus': return { on: lines > 0, note: `${lines} line${lines === 1 ? '' : 's'}: +${2 * lines} Mult` };
+      case 'loupe': return { on: gems > 0, note: `${gems} gem${gems === 1 ? '' : 's'}: +${2 * gems} Mult` };
+      case 'purse': { const v = Math.min(6, Math.floor(run.gold / 5)); return { on: v > 0, note: `${run.gold} gold: +${v} Mult` }; }
+      case 'rainbow': return need(new Set(G.flatMap((x) => x.def.col)).size, 8, 'Colours');
+      case 'fruitbowl': return need(fam('fruit'), 11, 'Fruit');
+      case 'whistle': return need(fam('creature'), 4, 'Creatures');
+      case 'vault': return need(fam('treasure'), 6, 'Treasure');
+      case 'trellis': return need(fam('garden'), 4, 'Garden');
+      case 'spellbook': return need(fam('magic'), 3, 'Magic');
+      case 'scimitar': return { on: run.wishesUsed === 0, note: run.wishesUsed === 0 ? 'No Wishes used: active' : 'A Wish was used this round' };
+      case 'moon': return { on: run.spinsLeft === 0, note: run.spinsLeft === 0 ? 'Final spin: active' : 'Not the final spin' };
+      case 'bell': return { on: lines > 0, note: `${lines} line${lines === 1 ? '' : 's'}` };
+      case 'scarab': return { on: (ch.n || 0) > 0, note: '' };
+      case 'tightrope': { const m = Math.max(...run.reels.map((r) => r.length)); return { on: m <= 5, note: `Longest reel: ${m} / 5` }; }
+      case 'seal': return { on: res.lines.some((l) => l.vlen === 5), note: res.lines.some((l) => l.vlen === 5) ? 'Line of 5: active' : 'No line of 5' };
+      case 'q_fruit': return { on: null, note: `Fruit on board: ${fam('fruit')} / 11` };
+      case 'q_gems': return { on: null, note: `Gems on board: ${gems} / 4` };
+      case 'q_magic': return { on: null, note: `Magic on board: ${fam('magic')} / 3` };
+      default: return { on: null, note: '' };
+    }
+  });
+}
+export function moveCharm(run, k, dir) {
+  const j = k + dir;
+  if (j < 0 || j >= run.charms.length) return k;
+  [run.charms[k], run.charms[j]] = [run.charms[j], run.charms[k]];
+  return j;
+}
+
 // ---------- Quests
 function completeQuest(run, ch, notes) {
   const q = CHARM[ch.id];

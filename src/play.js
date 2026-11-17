@@ -397,6 +397,21 @@ function drawHead(r, on) {
   if (on && dec && tapped(r.x, r.y, r.w, r.h)) P.sel = { it: { k: 'decree', id: dec }, r };
 }
 
+// What is on the landed board: a count per family and the number of lines.
+const READ_FAMS = [['fruit', 'cherry'], ['garden', 'leaf'], ['creature', 'cat'], ['treasure', 'coin'], ['magic', 'lamp']];
+function drawReadout(x, y, w) {
+  const run = S.run, g = V.g;
+  if (!P.res || run.phase !== 'landed' || P.spinning.some(Boolean)) return false;
+  const lines = P.res.lines.length, showL = w >= 150;
+  const slot = (w - (showL ? 44 : 0)) / 5;
+  READ_FAMS.forEach(([f, icon], k) => {
+    const n = P.res.cells.filter((c) => c.def.fam === f).length, cx = Math.round(x + k * slot);
+    spr(icon, cx + 4, y + 4, pxScale(0.5), 0, n ? 1 : 0.4);
+    text(g, String(n), cx + 11, y, { col: n ? FAMILIES[f].col : '#5A5490', shadow: '#0B0920' });
+  });
+  if (showL) text(g, `${lines} LINE${lines === 1 ? '' : 'S'}`, x + w, y, { align: 'r', col: lines ? C.yellow : '#5A5490', shadow: '#0B0920' });
+  return true;
+}
 function numBox(x, y, w, h, str, col, sp) {
   const g = V.g;
   rrect(x, y, w, h, '#0B0920'); rrect(x + 1, y + 1, w - 2, h - 2, shade(col, -0.25)); rrect(x + 1, y + 1, w - 2, h - 4, col);
@@ -414,8 +429,10 @@ function drawScore(r) {
     numBox(r.x + 6, by, bw, bh, coins, C.coins, P.cP);
     numBox(r.x + r.w - 6 - bw, by, bw, bh, mult, C.mult, P.mP);
     text(g, 'x', r.x + r.w / 2, by + bh / 2 - 8, { align: 'c', scale: 2, col: C.cream, shadow: '#0B0920' });
-    text(g, 'COINS', r.x + 6 + bw / 2, r.y + r.h - 11, { align: 'c', col: '#6FB6FF' });
-    text(g, 'MULT', r.x + r.w - 6 - bw / 2, r.y + r.h - 11, { align: 'c', col: '#FF7A84' });
+    if (!drawReadout(r.x + 8, r.y + r.h - 11, r.w - 16)) {
+      text(g, 'COINS', r.x + 6 + bw / 2, r.y + r.h - 11, { align: 'c', col: '#6FB6FF' });
+      text(g, 'MULT', r.x + r.w - 6 - bw / 2, r.y + r.h - 11, { align: 'c', col: '#FF7A84' });
+    }
     P.L.coinsBox = { x: r.x + 6, y: by, w: bw, h: bh }; P.L.multBox = { x: r.x + r.w - 6 - bw, y: by, w: bw, h: bh };
   } else {
     const bh = (r.h - 14) / 2;
@@ -588,18 +605,26 @@ function drawCharms(r, on) {
   }
   P.L.slots = slots; P.L.rslots = rslots;
   if (!run.charms.length && !run.relics.length && r.h <= 60) text(g, 'NO CHARMS YET', r.x + r.w / 2, r.y + r.h / 2 - 5, { align: 'c', col: '#4A4580' });
+  // conditional charms light up or dim to match the board that has landed
+  if (P.res && run.phase === 'landed') { if (P.cstFor !== P.res) { P.cstFor = P.res; P.cst = G.charmStates(run, P.res); } } else P.cst = P.cstFor = null;
+  const cst = P.cst;
   const punch = (key) => (P.cpunch && P.cpunch.k === key ? Math.max(0, 1 - (T.now - P.cpunch.t0) / 0.3) : 0);
   slots.forEach((s, k) => {
     inset(s.x + 1, s.y, s.w - 2, s.h);
     const ch = run.charms[k];
     if (!ch) return;
     const p = punch('c' + k);
-    spr(ch.id, s.x + s.w / 2, s.y + s.h / 2 + Math.sin(V.t * 1.8 + k) * 0.7 - p * 4, pxScale(Math.min(2, (s.w - 3) / 16)) * (1 + p * 0.35), Math.sin(V.t * 1.3 + k * 2) * 0.05 + p * 0.3);
+    const cs = cst && cst[k] ? cst[k] : { on: null, note: '' };
+    if (cs.on === true) {
+      rrect(s.x + 1, s.y, s.w - 2, s.h, '#FFD84A', 1); rrect(s.x + 2, s.y + 1, s.w - 4, s.h - 2, '#3B2E08', 1);
+      glow(s.x + s.w / 2, s.y + s.h / 2, s.w * 0.75, 'rgba(255,200,60,0.6)', 0.55 + 0.25 * Math.sin(V.t * 5 + k));
+    }
+    spr(ch.id, s.x + s.w / 2, s.y + s.h / 2 + Math.sin(V.t * 1.8 + k) * 0.7 - p * 4, pxScale(Math.min(2, (s.w - 3) / 16)) * (1 + p * 0.35), Math.sin(V.t * 1.3 + k * 2) * 0.05 + p * 0.3, cs.on === false && !p ? 0.38 : 1);
     const q = CHARM[ch.id];
     if (q.quest) { rect(s.x + 2, s.y + s.h - 3, s.w - 4, 2, '#0B0920'); rect(s.x + 2, s.y + s.h - 3, (s.w - 4) * Math.min(1, (ch.n || 0) / q.goal), 2, '#35C9B8'); }
     if (q.quest && q.goal > 1) text(g, `${ch.n || 0}/${q.goal}`, s.x + s.w / 2, s.y + s.h - 13, { align: 'c', col: '#5CE8D8', outline: '#0B0920' });
-    if (on && tapped(s.x, s.y, s.w, s.h)) { P.sel = { it: { k: 'charm', id: ch.id, ch }, r: s }; sfx.select(); }
-    else if (I.mouse && !I.down && over(s.x, s.y, s.w, s.h)) P.hover = { it: { k: 'charm', id: ch.id, ch }, r: s };
+    if (on && tapped(s.x, s.y, s.w, s.h)) { P.sel = { it: { k: 'charm', id: ch.id, ch, on: cs.on, note: cs.note }, r: s }; sfx.select(); }
+    else if (I.mouse && !I.down && over(s.x, s.y, s.w, s.h)) P.hover = { it: { k: 'charm', id: ch.id, ch, on: cs.on, note: cs.note }, r: s };
   });
   rslots.forEach((s, k) => {
     const rl = run.relics[k], p = punch('r' + k);
@@ -623,8 +648,10 @@ function drawStatus(r) {
     const xs = [r.x + 8, r.x + r.w * 0.33, r.x + r.w - 44];
     items.forEach((f, k) => f(Math.round(xs[k]), r.y + 7));
   } else {
-    const gap = (r.h - 8) / 3;
+    const rows = P.res && run.phase === 'landed' && r.h >= 54 ? 4 : 3;
+    const gap = (r.h - 8) / rows;
     items.forEach((f, k) => f(r.x + 8, Math.round(r.y + 6 + k * gap + (gap - 9) / 2)));
+    if (rows === 4) drawReadout(r.x + 6, Math.round(r.y + 6 + 3 * gap + (gap - 9) / 2), r.w - 10);
   }
 }
 

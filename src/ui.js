@@ -107,21 +107,23 @@ function itemMeta(it) {
   return { tag: FAMILIES[d.fam].name.toUpperCase(), tcol: FAMILIES[d.fam].col, tag2: r.name.toUpperCase(), tcol2: r.col, ncol: C.cream };
 }
 function itemExtra(it) {
-  const d = itemDef(it);
+  const d = itemDef(it), parts = [];
   if (it.k === 'sym' && !d.curse) {
     const b = it.inst ? it.inst.b : 0;
-    return `Pays [c]${d.coins + b}[]${b ? ` (${d.coins}${b > 0 ? '+' : ''}${b} grown)` : ''}`;
+    parts.push(`Pays [c]${d.coins + b}[]${b ? ` (${d.coins}${b > 0 ? '+' : ''}${b} grown)` : ''}`);
   }
-  if (it.k === 'charm' && d.quest && d.goal > 1) return `Progress [k]${(it.ch && it.ch.n) || 0} / ${d.goal}[]`;
+  if (it.k === 'charm' && d.quest && d.goal > 1) parts.push(`Progress [k]${(it.ch && it.ch.n) || 0} / ${d.goal}[]`);
   if (it.k === 'charm' && it.ch) {
-    if (it.id === 'scarab') return `Now [m]x${(1 + 0.2 * (it.ch.n || 0)).toFixed(1)} Mult[]`;
-    if (it.id === 'sandtimer') return `[x]${it.ch.n ?? 8} spins left[]`;
+    if (it.id === 'scarab') parts.push(`Now [m]x${(1 + 0.2 * (it.ch.n || 0)).toFixed(1)} Mult[]`);
+    if (it.id === 'sandtimer') parts.push(`[x]${it.ch.n ?? 8} spins left[]`);
   }
-  return '';
+  // live status from the board that is showing right now
+  if (it.note) parts.push(it.on === true ? `[g]${it.note}[]` : it.on === false ? `[x]${it.note}[]` : it.note);
+  return parts.join('\n');
 }
 export function infoHeight(it, w) {
   const d = itemDef(it), ex = itemExtra(it);
-  return 8 + 10 + 10 + richHeight(d.desc, w - 12) + (ex ? 12 : 0) + 6;
+  return 8 + 10 + 10 + richHeight(d.desc, w - 12) + (ex ? richHeight(ex, w - 12) + 2 : 0) + 6;
 }
 export function infoCard(x, y, w, it, o = {}) {
   const g = V.g, d = itemDef(it), m = itemMeta(it);
