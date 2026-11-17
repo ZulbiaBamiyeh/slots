@@ -749,10 +749,11 @@ function draw(on) {
   drawStatus(L.status);
   drawButtons(L.btn, live);
   if (P.hint && !P.busy && !P.banner) {
-    const m = L.mach; const w = Math.min(m.w - 8, measure(P.hint) + 12), h = richHeight(P.hint, w - 8) + 6;
-    const hy = m.ry + m.rh / 2 - h / 2 + (S.run.phase === 'ready' ? 0 : -m.cell * 1.1) + Math.sin(V.t * 4) * 1.5;
-    rrect(m.x + (m.w - w) / 2, hy, w, h, '#0B0920'); rrect(m.x + (m.w - w) / 2 + 1, hy + 1, w - 2, h - 2, '#FFD84A');
-    rich(g, P.hint, m.x + (m.w - w) / 2 + 4, hy + 4, w - 8, { col: '#1B1A3A', align: 'c' });
+    // tutorial hints sit in the charm panel (empty during the first round), never over the reels
+    const c = L.charms; const w = Math.min(c.w - 6, measure(P.hint) + 12), h = richHeight(P.hint, w - 8, { lh: 9 }) + 6;
+    const hx = Math.round(c.x + (c.w - w) / 2), hy = Math.round(c.y + (c.h - h) / 2 - 1 + Math.sin(V.t * 4) * 1);
+    rrect(hx, hy, w, h, '#0B0920'); rrect(hx + 1, hy + 1, w - 2, h - 2, '#FFD84A');
+    rich(g, P.hint, hx + 4, hy + 4, w - 8, { col: '#1B1A3A', align: 'c', lh: 9 });
   }
   drawSpeech(L.dj.x - 1, L.dj.y + L.dj.h * 0.5, V.portrait ? -1 : -1, V.portrait ? L.head.w - 10 : 150);
   drawBanner();
