@@ -10,7 +10,7 @@ import {
   rect, rrect, panel, inset, spr, pxScale, glow, text, measure, rich, richHeight,
 } from './ui.js';
 import { S, scenes, save, go, checkUnlocks, toast } from './state.js';
-import { openEditor } from './screens.js';
+import { openEditor, offerReward } from './screens.js';
 
 const mod = (a, n) => ((a % n) + n) % n;
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -214,6 +214,11 @@ async function doCash() {
   save();
   await playScore(res, before);
   P.bOver = null; T.speed = 1; P.fast = false;
+  for (let c = 0; c < 5; c++) P.pos[c] = P.last[c] = run.offsets[c];
+  for (const n of res.notes) {
+    if (n.t === 'spawn') toast(`A ${SYM[n.inst.id].name} joins reel ${n.c + 1}.`, '#7CE08F');
+    if (n.t === 'quest') { toast(`QUEST COMPLETE: ${SYM[n.reward].name} is yours!`, '#5CE8D8'); sfx.fanfare(); flash(0.15); djinnMood('shock', 2); }
+  }
   for (const n of res.notes) if (n.t === 'shatter') { toast('The Ruin Timer shatters! 3 curses added.', '#FF7A8A'); sfx.curse(); shake(5); }
   if (res.outcome === 'paid') return finishRound();
   if (res.outcome === 'over') return gameOver();
@@ -590,6 +595,9 @@ function drawCharms(r, on) {
     if (!ch) return;
     const p = punch('c' + k);
     spr(ch.id, s.x + s.w / 2, s.y + s.h / 2 + Math.sin(V.t * 1.8 + k) * 0.7 - p * 4, pxScale(Math.min(2, (s.w - 3) / 16)) * (1 + p * 0.35), Math.sin(V.t * 1.3 + k * 2) * 0.05 + p * 0.3);
+    const q = CHARM[ch.id];
+    if (q.quest) { rect(s.x + 2, s.y + s.h - 3, s.w - 4, 2, '#0B0920'); rect(s.x + 2, s.y + s.h - 3, (s.w - 4) * Math.min(1, (ch.n || 0) / q.goal), 2, '#35C9B8'); }
+    if (q.quest && q.goal > 1) text(g, `${ch.n || 0}/${q.goal}`, s.x + s.w / 2, s.y + s.h - 13, { align: 'c', col: '#5CE8D8', outline: '#0B0920' });
     if (on && tapped(s.x, s.y, s.w, s.h)) { P.sel = { it: { k: 'charm', id: ch.id, ch }, r: s }; sfx.select(); }
     else if (I.mouse && !I.down && over(s.x, s.y, s.w, s.h)) P.hover = { it: { k: 'charm', id: ch.id, ch }, r: s };
   });
@@ -724,6 +732,11 @@ function draw(on) {
   const tip = P.sel || P.hover;
   if (tip && !P.payout && !P.spinning.some(Boolean)) infoNear(tip.r.x, tip.r.y, tip.r.w, tip.r.h, tip.it);
   drawPayout(on);
+  // a finished quest hands over its symbol as soon as the machine is idle
+  if (on && !P.busy && !P.banner && !P.payout) offerReward(() => {
+    for (let c = 0; c < 5; c++) P.pos[c] = P.last[c] = run.offsets[c];
+    if (run.phase === 'landed') landed();
+  });
 }
 
 scenes.play = { enter, draw };

@@ -17,6 +17,7 @@ export const RARITY = {
   U: { name: 'Uncommon',  col: '#3FBF5A', sym: 3, charm: 6 },
   R: { name: 'Rare',      col: '#7FA8FF', sym: 5, charm: 8 },
   L: { name: 'Legendary', col: '#F2A93B', sym: 8, charm: 12 },
+  Q: { name: 'Quest', col: '#35C9B8', sym: 6, charm: 3 },
 };
 
 const S = (id, name, fam, col, rar, coins, desc, fx = {}) => ({ id, name, fam, col: col.split(' '), rar, coins, desc, tags: [], ...fx });
@@ -34,7 +35,10 @@ export const SYMBOLS = [
   S('watermelon', 'Watermelon', 'fruit', 'green red', 'R', 10, 'A whole lot of fruit.'),
   S('dragonfruit', 'Dragonfruit', 'fruit', 'pink', 'R', 4, '[m]+1 Mult[] per different [k]fruit[] touching it.'),
   S('goldenapple', 'Golden Apple', 'fruit', 'gold', 'L', 8, 'Touching [k]fruit[] score [c]x2 coins[].', { amul: { m: 'fam:fruit', k: 2 } }),
+  S('strawberry', 'Strawberry', 'fruit', 'red', 'U', 2, '[c]+2[] per other [k]Strawberry[] on the board. [k]Runners:[] buying one adds 2 more at random spots.', { brd: { m: 'id:strawberry', v: 2 }, spawnOnBuy: 2 }),
   // ---- Garden
+  S('bramble', 'Bramble', 'garden', 'green purple', 'C', 5, '[k]Spreads:[] while you own any, one more Bramble joins a random reel every round.'),
+  S('mushroom', 'Mushroom', 'garden', 'red white', 'U', 1, '[c]+2[] for every symbol on its reel. [k]Spores:[] buying one adds 2 more at random spots.', { spawnOnBuy: 2 }),
   S('leaf', 'Leaf', 'garden', 'green', 'C', 1, 'Touching [k]fruit[] [c]+2[].', { aura: { m: 'fam:fruit', v: 2 } }),
   S('seed', 'Seed', 'garden', 'green', 'C', 0, 'Grows [c]+1[] forever each time it lands. [c]+3[] if touching [k]water[].'),
   S('rose', 'Rose', 'garden', 'pink red', 'C', 3, '[c]+4[] when touching a [k]Peach[] or [k]Bee[].', { sadd: { m: ['id:peach', 'id:bee'], v: 4 }, tags: ['flower'] }),
@@ -54,6 +58,7 @@ export const SYMBOLS = [
   S('elephant', 'Elephant', 'creature', 'white', 'R', 6, 'Cracks touching [k]Coconuts[] and opens [k]Chests[].'),
   S('peacock', 'Peacock', 'creature', 'blue green', 'R', 3, '[m]+1 Mult[] per different [k]colour[] touching it.'),
   S('phoenix', 'Phoenix', 'creature', 'red gold', 'L', 8, 'Every touching symbol [k]triggers again[].'),
+  S('rabbit', 'Rabbit', 'creature', 'white', 'U', 3, '[k]Breeds:[] when two Rabbits land touching, another joins a random reel.'),
   // ---- Treasure
   S('coin', 'Coin', 'treasure', 'gold', 'C', 3, 'Honest money.'),
   S('pearl', 'Pearl', 'treasure', 'white', 'C', 1, 'Grows [c]+1[] forever each time it lands.'),
@@ -74,6 +79,18 @@ export const SYMBOLS = [
   S('bottle', 'Djinn Bottle', 'magic', 'purple blue', 'R', 1, '[m]+1 Mult[] per other [k]Magic[] symbol on the board.'),
   S('charmer', 'Snake Charmer', 'magic', 'purple green', 'R', 1, 'Touching [v]curses[] are charmed: harmless, and pay [c]10[].'),
   S('cursejar', 'Curse Jar', 'magic', 'purple', 'R', 0, '[m]+2 Mult[] per [v]curse[] on the board.'),
+];
+
+// Capstone symbols: only obtainable by completing a quest charm.
+export const QUEST_SYMBOLS = [
+  S('pomegranate', 'Pomegranate', 'fruit', 'red', 'Q', 4, 'Every [k]fruit[] in its row and column [k]triggers again[].'),
+  S('tiger', 'Tiger', 'creature', 'gold', 'Q', 6, 'Eats touching [k]creatures[] for [c]+15[] each, and grows [c]+3[] forever per meal.', { eat: { m: 'fam:creature', v: 15 } }),
+  S('starsapphire', 'Star Sapphire', 'treasure', 'blue white', 'Q', 6, '[k]Gem[]. [m]+3 Mult[] per other [k]gem[] on the board.', { tags: ['gem'] }),
+  S('worldtree', 'World Tree', 'garden', 'green', 'Q', 3, '[k]Water[]. Every touching symbol grows [c]+2[] forever each time it lands.', { tags: ['water'] }),
+  S('heart', "Djinn's Heart", 'magic', 'red pink', 'Q', 2, '[m]x Mult[] equal to the number of [k]Magic[] symbols on the board.'),
+  S('seven', 'Lucky Seven', 'magic', 'red white', 'Q', 7, '[k]Wild[]. Any [k]line[] it is part of counts one symbol longer.', { tags: ['wild'] }),
+  S('shard', 'Mirror Shard', 'magic', 'blue white', 'Q', 2, '[m]x2 Mult[] while its reel has 4 or fewer symbols.'),
+  S('queen', 'Scarab Queen', 'creature', 'green gold', 'Q', 4, 'Devours touching [v]curses[] for good, growing [c]+10[] forever for each.'),
 ];
 
 export const CURSES = [
@@ -135,6 +152,19 @@ export const RELIC_CHARMS = [
   C('ring', "Djinn's Ring", 'L', 'Every symbol [c]+3 coins[]. [x]Tribute rewards pay 2 gold less.[]', { price: 3 }),
   C('paw', "Monkey's Paw", 'L', 'Bazaar symbols are always [k]Rare[] or better. [x]Every Bazaar visit adds a curse.[]', { price: 3 }),
   C('sandtimer', 'Ruin Timer', 'R', '[m]x4 Mult[] for 8 spins. [x]Then it shatters, adding 3 curses.[]', { count: 8, price: 3 }),
+];
+
+// Quest charms: take a slot and do nothing until completed. Then they leave, hand you their
+// capstone symbol, and add it to the Bazaar for the rest of the run.
+export const QUESTS = [
+  C('q_fruit', 'Harvest Basket', 'Q', '[k]Quest:[] cash in a spin with 11 or more [k]fruit[] on the board.', { quest: true, goal: 1, reward: 'pomegranate' }),
+  C('q_hunt', 'Hunting Horn', 'Q', '[k]Quest:[] have 12 symbols [k]eaten[], [k]cracked[] or [k]opened[].', { quest: true, goal: 12, reward: 'tiger' }),
+  C('q_gems', 'Gem Order', 'Q', '[k]Quest:[] cash in a spin with 4 or more [k]gems[] on the board.', { quest: true, goal: 1, reward: 'starsapphire' }),
+  C('q_grow', 'Green Thumb', 'Q', '[k]Quest:[] grow your symbols by 30 coins in total.', { quest: true, goal: 30, reward: 'worldtree' }),
+  C('q_magic', 'Grimoire Page', 'Q', '[k]Quest:[] cash in a spin with 3 or more [k]Magic[] symbols on the board.', { quest: true, goal: 1, reward: 'heart' }),
+  C('q_line', 'Lucky Chip', 'Q', '[k]Quest:[] score a [k]line of 5[].', { quest: true, goal: 1, reward: 'seven' }),
+  C('q_thin', 'Empty Bowl', 'Q', '[k]Quest:[] get every reel down to 4 or fewer symbols.', { quest: true, goal: 1, reward: 'shard' }),
+  C('q_curse', 'Cursed Ledger', 'Q', '[k]Quest:[] pay a tribute with 4 or more [v]curses[] on your reels.', { quest: true, goal: 1, reward: 'queen' }),
 ];
 
 export const DECREES = [
@@ -219,8 +249,9 @@ export const QUIPS = {
 };
 
 const idx = (arr) => Object.fromEntries(arr.map((x) => [x.id, x]));
-export const SYM = idx([...SYMBOLS, ...CURSES, ...RELIC_SYMBOLS]);
-export const CHARM = idx([...CHARMS, ...RELIC_CHARMS]);
+export const SYM = idx([...SYMBOLS, ...QUEST_SYMBOLS, ...CURSES, ...RELIC_SYMBOLS]);
+export const CHARM = idx([...CHARMS, ...QUESTS, ...RELIC_CHARMS]);
+QUESTS.forEach((q) => (q.desc += ` Reward: [g]${SYM[q.reward].name}[].`));
 export const DECREE = idx(DECREES);
 export const LAMP = idx(LAMPS);
 RELIC_SYMBOLS.forEach((s) => (s.relic = true));

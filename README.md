@@ -32,6 +32,8 @@ Plays a few hundred runs with a bot and prints how far it gets, for tuning tribu
 - **4 spins, 3 wishes per tribute.** A wish holds reels and respins the rest, or nudges one reel a step.
 - **9 tributes in 3 acts.** Every third has a Decree. The starting reels clear Act 1; after that you need a build.
 - **Builds.** Most Mult is conditional: enough of one family on the board (fruit, creatures, treasure, garden, magic), long lines, eaters and crackers, short reels, banishing, curses.
+- **Quests.** A quest charm takes a slot and does nothing until its task is done, then hands over a unique capstone symbol (Tiger, Lucky Seven, World Tree...) and adds it to the Bazaar.
+- **Spreaders.** Strawberry, Mushroom, Bramble and Rabbit add copies of themselves to your reels, wanted or not.
 - **Bazaar** between rounds: symbols, charms (max 5), banish, move, reroll, and sometimes a cheap cursed relic with a catch.
 - **Meta:** four lamps (starting reel sets) and Wrath levels unlock as you play. Runs save automatically.
 

@@ -18,7 +18,7 @@ export function load() {
     const d = JSON.parse(localStorage.getItem(KEY) || 'null');
     if (d) {
       Object.assign(S.meta, d.meta || {});
-      if (d.run && d.run.v === 3) S.run = d.run;
+      if (d.run && d.run.v === 4) S.run = d.run;
     }
   } catch (e) { /* storage unavailable: play without saving */ }
   S.meta.unlocked.azure = true;

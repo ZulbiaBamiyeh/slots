@@ -21,6 +21,13 @@ export function openEditor(o = {}) {
   Object.assign(E, { mode: 'view', place: null, lifted: null, gap: null, sel: null, closeAfter: false }, o);
   S.modal = 'editor';
 }
+// If a completed quest's symbol is waiting, ask where it goes.
+export function offerReward(after) {
+  const run = S.run;
+  if (!run || !run.rewards.length || S.modal || S.switching || !G.reelsWithRoom(run).length) return;
+  openEditor({ mode: run.phase === 'shop' ? 'shop' : 'view', closeAfter: true, place: { id: run.rewards[0], done: (c, pos) => { G.placeReward(run, c, pos); sfx.buy(); if (after) after(); } } });
+}
+const spawnToasts = (notes) => { for (const n of notes || []) if (n.t === 'spawn') toast(`A ${SYM[n.inst.id].name} joins reel ${n.c + 1}.`, '#7CE08F'); };
 function closeEditor() { S.modal = null; E.place = null; E.lifted = null; }
 
 modals.editor = () => {
@@ -142,6 +149,7 @@ function nextRoundInfo(run) {
 function drawShop(on) {
   const run = S.run, g = V.g, W = V.W;
   if (!run || !run.shop) return;
+  if (on) offerReward();
   const sh = run.shop;
   let y = top();
   panel(4, y, W - 8, 30, { fill: '#0F3B3A', hi: '#2A8A78' });
@@ -221,7 +229,7 @@ function drawShop(on) {
   if (button('sh-reels', 4 + bw + 5, byy, bw, 34, 'REELS', { col: '#5B4FA8', sub: 'banish / move', enabled: on })) openEditor({ mode: 'shop' });
   if (button('sh-next', 4 + (bw + 5) * 2, byy, bw, 34, 'NEXT', { col: '#E08A1A', sub: 'tribute', scale: 1, enabled: on && !S.switching })) {
     const notes = G.nextRound(run); save();
-    go('play').then(() => { for (const n of notes) if (n.t === 'curse') { toast(`Pandora's Box: a ${SYM[n.inst.id].name} joins reel ${n.c + 1}.`, '#C79BFF'); sfx.curse(); } });
+    go('play').then(() => { spawnToasts(notes); for (const n of notes) if (n.t === 'curse') { toast(`Pandora's Box: a ${SYM[n.inst.id].name} joins reel ${n.c + 1}.`, '#C79BFF'); sfx.curse(); } });
   }
   // info panel
   const ix = oneRow ? Math.min(130, W * 0.3) + 20 + run.relics.length * 20 : 4, iy = oneRow ? y - 2 : y, iw = W - ix - 4, ih = byy - 6 - iy;
@@ -234,7 +242,7 @@ function drawShop(on) {
       const o = sh.syms[s.i]; it = { k: 'sym', id: o.id };
       act = { label: 'BUY', sub: `${o.price} gold`, col: '#3FA55A', dis: !G.canBuySym(run, s.i), why: run.gold < o.price ? 'Not enough gold.' : 'All reels are full.', fn: () => {
         const k = s.i;
-        openEditor({ mode: 'shop', closeAfter: true, place: { id: o.id, done: (c, pos) => { G.buySym(run, k, c, pos); sfx.buy(); B.sel = null; djinnMood('smirk', 1); }, cancel: () => {} } });
+        openEditor({ mode: 'shop', closeAfter: true, place: { id: o.id, done: (c, pos) => { spawnToasts(G.buySym(run, k, c, pos)); sfx.buy(); B.sel = null; djinnMood('smirk', 1); }, cancel: () => {} } });
       } };
     } else if (s.k === 'charm' && sh.charms[s.i] && !sh.charms[s.i].sold) {
       const o = sh.charms[s.i]; it = { k: 'charm', id: o.id };
@@ -453,6 +461,7 @@ const PAGES = [
   ['WISHES', 'After the reels land you may spend a Wish: [k]HOLD[] the reels you like and [k]RESPIN[] the rest, or [k]NUDGE[]: tap the symbol waiting just above or below a reel to pull it onto the board. Then [k]CASH IN[].'],
   ['RIG THE MACHINE', 'At the Bazaar, buy symbols and choose the reel and the exact spot. Each reel is a loop showing 3 in a row, so neighbours you stack will land together. [k]Banish[] symbols to make reels short and reliable.'],
   ['PICK A BUILD', 'The starting reels will not carry you past Act 1. Most [m]Mult[] only switches on when you commit: enough of one family on the board, long lines, short reels. Read the charms and build toward one.'],
+  ['QUESTS', 'A [k]quest[] charm takes a slot and does nothing until you finish its task. Then it leaves, hands you a unique symbol to place, and that symbol can show up in the Bazaar for the rest of the run.'],
   ['CURSED RELICS', 'Now and then the Bazaar sells a [x]cursed relic[] cheaply: very strong, with a catch, and it can never be sold. They need no charm slot.'],
 ];
 modals.help = () => {

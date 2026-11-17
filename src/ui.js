@@ -112,6 +112,7 @@ function itemExtra(it) {
     const b = it.inst ? it.inst.b : 0;
     return `Pays [c]${d.coins + b}[]${b ? ` (${d.coins}${b > 0 ? '+' : ''}${b} grown)` : ''}`;
   }
+  if (it.k === 'charm' && d.quest && d.goal > 1) return `Progress [k]${(it.ch && it.ch.n) || 0} / ${d.goal}[]`;
   if (it.k === 'charm' && it.ch) {
     if (it.id === 'scarab') return `Now [m]x${(1 + 0.2 * (it.ch.n || 0)).toFixed(1)} Mult[]`;
     if (it.id === 'sandtimer') return `[x]${it.ch.n ?? 8} spins left[]`;

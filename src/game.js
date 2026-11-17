@@ -1,5 +1,5 @@
 // Cherry Djinn — rules engine. Pure logic on a JSON-serialisable `run` object.
-import { SYM, CHARM, SYMBOLS, CHARMS, CURSES, RELICS, DECREES, LAMP, TRIBUTES, REWARDS, RARITY, LINE_FAMS } from './data.js';
+import { SYM, CHARM, SYMBOLS, CHARMS, QUESTS, CURSES, RELICS, DECREES, LAMP, TRIBUTES, REWARDS, RARITY, LINE_FAMS } from './data.js';
 
 export const COLS = 5, ROWS = 3, MAX_REEL = 9, MIN_REEL = 3;
 
@@ -27,13 +27,14 @@ export const hasRelic = (run, id) => run.relics.some((c) => c.id === id);
 export function newRun(lampId = 'azure', wrath = 0, seed = (Math.random() * 2 ** 31) | 0) {
   const lamp = LAMP[lampId];
   const run = {
-    v: 3, rs: seed | 0, lamp: lampId, wrath, uid: 1,
+    v: 4, rs: seed | 0, lamp: lampId, wrath, uid: 1,
     reels: [], charms: [], relics: [], maxCharms: lamp.slots || 5,
     gold: lamp.gold, round: 0, phase: 'ready', endless: false,
     offsets: [0, 0, 0, 0, 0], held: [false, false, false, false, false],
     spinsLeft: 0, wishesLeft: 0, wishesUsed: 0, spinInRound: 0, spinNo: 0,
     roundScore: 0, sr: [], glare: -1, tributeMul: 1,
     decrees: [], shop: null,
+    rewards: [], unlocked: [], questsDone: [],
     stats: { bestSpin: 0, spins: 0, tributes: 0, bought: 0 },
   };
   run.reels = lamp.reels.map((r) => r.map((id) => mk(run, id)));
@@ -63,6 +64,15 @@ export function tributeFor(run, r = run.round) {
 export function allInst(run) { return run.reels.flat(); }
 const countSym = (run, id) => allInst(run).filter((s) => s.id === id).length;
 
+// Add a symbol at a random spot on a random reel that has room.
+export function addRandom(run, id) {
+  const open = run.reels.map((r, i) => i).filter((i) => run.reels[i].length < MAX_REEL);
+  if (!open.length) return null;
+  const c = pick(run, open);
+  const inst = mk(run, id);
+  insertAt(run, c, ri(run, run.reels[c].length + 1), inst);
+  return { c, inst };
+}
 export function addCurse(run) {
   const open = run.reels.map((r, i) => i).filter((i) => run.reels[i].length < MAX_REEL);
   if (!open.length) return null;
@@ -98,6 +108,7 @@ export function startRound(run) {
   run.held = [false, false, false, false, false];
   run.glare = -1;
   if (hasRelic(run, 'pandora')) { const a = addCurse(run); if (a) notes.push({ t: 'curse', ...a, by: 'pandora' }); }
+  if (countSym(run, 'bramble') > 0) { const a = addRandom(run, 'bramble'); if (a) notes.push({ t: 'spawn', ...a }); }
   run.phase = 'ready';
   return notes;
 }
@@ -192,14 +203,15 @@ function findLines(run, G, dec) {
       const b = best((x) => x.def.fam === f || wild(x));
       if (b && (!fam || b.len > fam.len)) fam = { ...b, key: f };
     }
-    if (fam) lines.push({ kind: 'family', row: r, ...fam });
+    const vlen = (b) => Math.min(5, b.len + (row.slice(b.c0, b.c0 + b.len).some((x) => x.def.id === 'seven') ? 1 : 0));
+    if (fam) lines.push({ kind: 'family', row: r, ...fam, vlen: vlen(fam) });
     let pure = null;
     const ids = [...new Set(row.filter((x) => LINE_FAMS.includes(x.def.fam)).map((x) => x.def.id))];
     for (const id of ids) {
       const b = best((x) => x.def.id === id || wild(x));
       if (b && (!pure || b.len > pure.len)) pure = { ...b, key: id };
     }
-    if (pure) lines.push({ kind: 'pure', row: r, ...pure });
+    if (pure) lines.push({ kind: 'pure', row: r, ...pure, vlen: vlen(pure) });
   }
   return lines;
 }
@@ -233,6 +245,12 @@ export function evaluate(run) {
   for (const x of G) if (x.def.id === 'charmer' && act(x)) for (const j of NB[x.i]) {
     const y = G[j]; if (y.def.curse && !y.dead && !y.charmed) { y.charmed = true; pre.push({ t: 'tame', i: j, by: x.i }); }
   }
+  // scarab queen devours curses for good
+  const devoured = [];
+  for (const x of G) if (x.def.id === 'queen' && act(x)) for (const j of NB[x.i]) {
+    const y = G[j];
+    if (y.def.curse && !y.dead && !y.devoured) { y.charmed = true; y.devoured = true; x.devours = (x.devours || 0) + 1; devoured.push(y.inst.u); pre.push({ t: 'eat', i: j, by: x.i }); }
+  }
   // curses that disable
   for (const x of G) if (curseOn(x)) {
     if (x.def.id === 'wasp') for (const j of NB[x.i]) if (G[j].def.fam === 'fruit' && !G[j].dead) { kill(G[j], 'wasp'); pre.push({ t: 'sting', i: j, by: x.i }); }
@@ -246,7 +264,7 @@ export function evaluate(run) {
   for (const x of G) if (act(x)) {
     if (x.def.eat) for (const j of NB[x.i]) {
       const y = G[j];
-      if (matches(y.def, x.def.eat.m) && act(y)) { y.eaten = true; x.eatGain += x.def.eat.v; pre.push({ t: 'eat', i: j, by: x.i }); }
+      if (matches(y.def, x.def.eat.m) && y.def.id !== x.def.id && act(y)) { y.eaten = true; x.eatGain += x.def.eat.v; pre.push({ t: 'eat', i: j, by: x.i }); }
     }
     if (x.def.id === 'monkey' || x.def.id === 'elephant') for (const j of NB[x.i]) {
       const y = G[j]; if (y.def.id === 'coconut' && act(y) && !y.opened) { y.opened = true; y.add += 15; pre.push({ t: 'crack', i: j, by: x.i }); }
@@ -272,6 +290,7 @@ export function evaluate(run) {
   if (hasCharm(run, 'sun')) for (const x of G) if (x.def.fam === 'fruit') x.add += 2;
   if (hasRelic(run, 'ring')) for (const x of G) x.add += 3;
   // multiplicative effects
+  for (const x of G) if (x.def.id === 'mushroom' && act(x)) x.add += 2 * run.reels[x.c].length;
   const baseOf = (x) => x.def.coins + x.inst.b + x.add;
   for (const x of G) {
     if (!act(x)) continue;
@@ -285,6 +304,7 @@ export function evaluate(run) {
       if (b) b.mul *= 2;
     }
     if (d.id === 'phoenix') for (const j of NB[x.i]) G[j].trig++;
+    if (d.id === 'pomegranate') for (const y of G) if (y !== x && y.def.fam === 'fruit' && (y.r === x.r || y.c === x.c)) y.trig++;
     if (d.id === 'hourglass') { if (x.r > 0) G[x.i - 1].trig++; if (x.r < ROWS - 1) G[x.i + 1].trig++; }
   }
   if (hasCharm(run, 'compass')) for (const i of [0, ROWS - 1, N - ROWS, N - 1]) G[i].mul *= 3;
@@ -295,7 +315,7 @@ export function evaluate(run) {
     if (x.dead || x.eaten) { x.coins = 0; continue; }
     if (x.gilded) { x.coins = 20; continue; }
     if (x.def.curse) {
-      x.coins = x.charmed ? 10 : (x.def.id === 'scorpion' && !incense ? -8 : 0);
+      x.coins = x.devoured ? 0 : x.charmed ? 10 : (x.def.id === 'scorpion' && !incense ? -8 : 0);
       continue;
     }
     let v = baseOf(x) * x.mul;
@@ -335,6 +355,12 @@ export function evaluate(run) {
       if (d.id === 'crystal' && x.r === 1) mulM(src, 2);
       if (d.id === 'seed') grow(x, (NB[x.i].some((j) => G[j].def.tags.includes('water')) ? 3 : 1) * g2);
       if (d.id === 'pearl') grow(x, 1 * g2);
+      if (d.id === 'starsapphire') addM(src, 3 * G.filter((y) => y !== x && y.def.tags.includes('gem')).length);
+      if (d.id === 'heart') mulM(src, G.filter((y) => y.def.fam === 'magic').length);
+      if (d.id === 'shard' && run.reels[x.c].length <= 4) mulM(src, 2);
+      if (d.id === 'tiger' && x.eatGain) grow(x, 3 * g2 * Math.round(x.eatGain / 15));
+      if (d.id === 'queen' && x.devours) grow(x, 10 * g2 * x.devours);
+      if (d.id === 'worldtree') for (const j of NB[x.i]) if (!G[j].dead && !G[j].def.curse) grow(G[j], 2 * g2);
       if (d.id === 'wateringcan') for (const j of NB[x.i]) if (G[j].def.fam === 'garden' && !G[j].dead) grow(G[j], 1 * g2);
       if (d.id === 'bat') {
         grow(x, 4 * g2);
@@ -345,8 +371,8 @@ export function evaluate(run) {
     }
   }
   for (const l of lines) {
-    if (l.kind === 'family') { mult += LINE_ADD[l.len]; push({ t: 'line', line: l, v: LINE_ADD[l.len] }); }
-    else { mult *= LINE_MUL[l.len]; push({ t: 'line', line: l, v: LINE_MUL[l.len] }); }
+    if (l.kind === 'family') { mult += LINE_ADD[l.vlen]; push({ t: 'line', line: l, v: LINE_ADD[l.vlen] }); }
+    else { mult *= LINE_MUL[l.vlen]; push({ t: 'line', line: l, v: LINE_MUL[l.vlen] }); }
   }
   // charms, left to right
   run.charms.forEach((ch, ci) => {
@@ -370,7 +396,7 @@ export function evaluate(run) {
       case 'bell': for (let k = 0; k < lines.length; k++) mulM(src, 1.5); break;
       case 'scarab': mulM(src, 1 + 0.2 * (ch.n || 0)); break;
       case 'tightrope': if (run.reels.every((r) => r.length <= 5)) mulM(src, 3); break;
-      case 'seal': if (lines.some((l) => l.len === 5)) mulM(src, 3); break;
+      case 'seal': if (lines.some((l) => l.vlen === 5)) mulM(src, 3); break;
     }
   });
   run.relics.forEach((rl, ri2) => {
@@ -382,7 +408,9 @@ export function evaluate(run) {
   coins = Math.max(0, coins);
   const total = Math.floor(coins * mult);
   events.push({ t: 'end', coins, mult, total });
-  return { events, coins, mult, total, gold, perm, lines, cells: G };
+  const breed = G.some((x) => x.def.id === 'rabbit' && act(x) && NB[x.i].some((j) => G[j].def.id === 'rabbit' && act(G[j])));
+  const eats = pre.filter((e) => e.t === 'eat' || e.t === 'crack' || e.t === 'open').length;
+  return { events, coins, mult, total, gold, perm, lines, cells: G, breed, devoured, eats };
 }
 
 export function cashIn(run) {
@@ -407,11 +435,53 @@ export function cashIn(run) {
       res.notes.push({ t: 'shatter' });
     }
   }
+  for (const u of res.devoured) {
+    for (let c = 0; c < COLS; c++) { const pos = run.reels[c].findIndex((s) => s.u === u); if (pos >= 0 && run.reels[c].length > MIN_REEL) removeAt(run, c, pos); }
+  }
+  if (res.breed) { const a = addRandom(run, 'rabbit'); if (a) res.notes.push({ t: 'spawn', ...a }); }
   const target = tributeFor(run);
   if (run.roundScore >= target) { run.phase = 'paid'; res.outcome = 'paid'; }
   else if (run.spinsLeft <= 0) { run.phase = 'over'; res.outcome = 'over'; }
   else { run.phase = 'ready'; res.outcome = 'next'; }
+  checkQuests(run, res, res.notes);
   return res;
+}
+
+// ---------- Quests
+function completeQuest(run, ch, notes) {
+  const q = CHARM[ch.id];
+  run.charms = run.charms.filter((c) => c !== ch);
+  run.questsDone.push(ch.id);
+  run.rewards.push(q.reward);
+  if (!run.unlocked.includes(q.reward)) run.unlocked.push(q.reward);
+  notes.push({ t: 'quest', id: ch.id, reward: q.reward });
+}
+// res is the result of a cash-in, or null when checking after a reel edit.
+export function checkQuests(run, res, notes = []) {
+  for (const ch of run.charms.slice()) {
+    const q = CHARM[ch.id];
+    if (!q.quest) continue;
+    let done = false;
+    const famN = (f) => res.cells.filter((x) => x.def.fam === f).length;
+    if (ch.id === 'q_thin') done = run.reels.every((r) => r.length <= 4);
+    else if (res) switch (ch.id) {
+      case 'q_fruit': done = famN('fruit') >= 11; break;
+      case 'q_hunt': ch.n = Math.min(q.goal, (ch.n || 0) + res.eats); done = ch.n >= q.goal; break;
+      case 'q_gems': done = res.cells.filter((x) => x.def.tags.includes('gem')).length >= 4; break;
+      case 'q_grow': ch.n = Math.min(q.goal, (ch.n || 0) + res.perm.reduce((a, p) => a + Math.max(0, p.d), 0)); done = ch.n >= q.goal; break;
+      case 'q_magic': done = famN('magic') >= 3; break;
+      case 'q_line': done = res.lines.some((l) => l.vlen === 5); break;
+      case 'q_curse': done = res.outcome === 'paid' && allInst(run).filter((s) => SYM[s.id].curse).length >= 4; break;
+    }
+    if (done) completeQuest(run, ch, notes);
+  }
+  return notes;
+}
+// Put the next pending quest reward on a reel.
+export function placeReward(run, c, pos) {
+  if (!run.rewards.length || run.reels[c].length >= MAX_REEL) return false;
+  insertAt(run, c, pos, mk(run, run.rewards.shift()));
+  return true;
 }
 
 // Gold payout after a paid tribute. Returns the breakdown and applies it.
@@ -460,6 +530,11 @@ export function genShop(run, fresh) {
   const syms = [];
   let guard = 0;
   while (syms.length < nSym && guard++ < 200) {
+    if (run.unlocked.length && rnd(run) < 0.18) {
+      const id = pick(run, run.unlocked);
+      if (!syms.some((o) => o.id === id)) syms.push({ id, price: RARITY.Q.sym, sold: false });
+      continue;
+    }
     let rar = rollRar(run, w);
     if (hasRelic(run, 'paw') && (rar === 'C' || rar === 'U')) rar = rnd(run) < 0.8 ? 'R' : 'L';
     const s = pick(run, SYMBOLS.filter((x) => x.rar === rar));
@@ -474,6 +549,9 @@ export function genShop(run, fresh) {
     const c = pick(run, pool);
     charms.push({ id: c.id, price: RARITY[rar].charm, sold: false });
   }
+  // sometimes one charm on offer is a quest
+  const qpool = QUESTS.filter((q) => !hasCharm(run, q.id) && !run.questsDone.includes(q.id));
+  if (qpool.length && charms.length === 2 && rnd(run) < 0.33) charms[1] = { id: pick(run, qpool).id, price: RARITY.Q.charm, sold: false };
   // sometimes the djinn slips a cursed relic onto the table
   let relic = null;
   if (rnd(run) < (fresh ? 0.6 : 0.35)) {
@@ -503,7 +581,10 @@ export function buySym(run, k, c, pos) {
   const o = run.shop.syms[k];
   run.gold -= o.price; o.sold = true; run.stats.bought++;
   insertAt(run, c, pos, mk(run, o.id));
-  return true;
+  // runners / spores: some symbols bring uninvited copies. Returns what was added.
+  const notes = [];
+  for (let k = 0; k < (SYM[o.id].spawnOnBuy || 0); k++) { const a = addRandom(run, o.id); if (a) notes.push({ t: 'spawn', ...a }); }
+  return notes;
 }
 export function canBuyCharm(run, k) {
   const o = run.shop.charms[k];
@@ -548,6 +629,7 @@ export function banish(run, c, pos) {
   run.shop.banish++;
   for (const ch of run.charms) if (ch.id === 'scarab') ch.n = (ch.n || 0) + 1;
   removeAt(run, c, pos);
+  checkQuests(run, null);
   return true;
 }
 export const MOVE_COST = 1;
